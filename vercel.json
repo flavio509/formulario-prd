@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/gerar-prd.js": {
+      "maxDuration": 60
+    }
+  }
+}

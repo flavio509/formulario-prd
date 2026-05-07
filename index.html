@@ -6,6 +6,8 @@
 <title>Formulário PRD — Gerador de Projetos</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -358,6 +360,63 @@
     margin: 1.5rem 0;
   }
 
+  /* Upload area do step-pre */
+  .upload-area {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .btn-upload {
+    padding: 14px 20px;
+    background: var(--surface-2);
+    border: 1.5px dashed var(--border-hover);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 500;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    text-align: center;
+  }
+  .btn-upload:hover {
+    background: var(--coral-light);
+    border-color: var(--coral);
+    color: var(--coral-dark);
+  }
+  .upload-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 11px 14px;
+    background: var(--coral-light);
+    border: 1px solid var(--coral);
+    border-radius: var(--radius);
+    font-size: 13px;
+  }
+  .upload-info .upload-size {
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+  .upload-status {
+    padding: 11px 14px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 13px;
+    color: var(--text-muted);
+    text-align: center;
+  }
+  .upload-erro {
+    padding: 11px 14px;
+    background: #FFEFEF;
+    border: 1px solid #F5C0C0;
+    border-radius: var(--radius);
+    font-size: 13px;
+    color: #B23A3A;
+    line-height: 1.5;
+  }
+
   @media (max-width: 480px) {
     .header h1 { font-size: 28px; }
     .step-title { font-size: 22px; }
@@ -384,8 +443,34 @@
     </div>
   </div>
 
+  <!-- STEP PRE: UPLOAD OPCIONAL -->
+  <div class="step active" id="step-pre">
+    <div class="step-eyebrow">Atalho</div>
+    <div class="step-title">Tem um documento sobre o projeto?</div>
+    <div class="step-desc">Se você já tem um briefing, transcrição de reunião ou anotações em PDF, DOCX, TXT ou MD, a IA gera o PRD direto a partir dele. Caso contrário, é só pular e responder o formulário.</div>
+
+    <div class="card">
+      <div class="card-label">Enviar documento <span class="optional">opcional</span></div>
+      <div class="upload-area">
+        <input type="file" id="upload-input" accept=".pdf,.docx,.txt,.md" onchange="arquivoEscolhido(this)" style="display:none" />
+        <button type="button" class="btn-upload" onclick="document.getElementById('upload-input').click()">+ Escolher arquivo (PDF, DOCX, TXT ou MD — até 10MB)</button>
+        <div id="upload-info" class="upload-info" style="display:none">
+          <span id="upload-filename"></span>
+          <span class="upload-size" id="upload-size"></span>
+        </div>
+        <div id="upload-status" class="upload-status" style="display:none"></div>
+        <div id="upload-erro" class="upload-erro" style="display:none"></div>
+      </div>
+    </div>
+
+    <div class="nav">
+      <button class="btn-back" onclick="pularUpload()">Pular e preencher manualmente</button>
+      <button class="btn-primary" id="btn-analisar" onclick="analisarArquivo()" disabled style="opacity:0.5">✦ Analisar com IA</button>
+    </div>
+  </div>
+
   <!-- STEP 0: START -->
-  <div class="step active" id="step-0">
+  <div class="step" id="step-0">
     <div class="step-eyebrow">Vamos começar</div>
     <div class="step-title">Qual é o nome do seu projeto?</div>
     <div class="step-desc">Não precisa ser o nome definitivo. Pode ser algo simples que descreva o que você quer construir.</div>
@@ -729,17 +814,23 @@
 </div>
 
 <script>
-var current = 0;
+var current = 'pre';
 var labels = ['Início','Problema','Solução','Como funciona','Funcionalidades','Pessoas','Referências','Concluído'];
 
 function goTo(n) {
   document.getElementById('step-' + current).classList.remove('active');
   document.getElementById('step-' + n).classList.add('active');
   current = n;
-  var pct = Math.round((n / 7) * 100);
-  document.getElementById('progress').style.width = pct + '%';
-  document.getElementById('step-label-meta').textContent = labels[n] || '';
-  document.getElementById('step-counter').textContent = n > 0 && n < 7 ? (n) + ' / 6' : '';
+  if (n === 'pre') {
+    document.getElementById('progress').style.width = '0%';
+    document.getElementById('step-label-meta').textContent = 'Início';
+    document.getElementById('step-counter').textContent = '';
+  } else {
+    var pct = Math.round((n / 7) * 100);
+    document.getElementById('progress').style.width = pct + '%';
+    document.getElementById('step-label-meta').textContent = labels[n] || '';
+    document.getElementById('step-counter').textContent = n > 0 && n < 7 ? (n) + ' / 6' : '';
+  }
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -887,10 +978,153 @@ function copiar() {
 }
 
 function novoFormulario() {
-  document.querySelectorAll('input').forEach(function(i) { i.checked = false; });
+  document.querySelectorAll('input').forEach(function(i) { if (i.type !== 'file') i.checked = false; });
   document.querySelectorAll('.opt').forEach(function(o) { o.classList.remove('sel'); });
   document.querySelectorAll('textarea').forEach(function(t) { t.value = ''; });
   document.getElementById('nome').value = '';
+  resetarUpload();
+  goTo('pre');
+}
+
+/* ========== UPLOAD + ANÁLISE COM IA ========== */
+var arquivoSelecionado = null;
+
+function resetarUpload() {
+  arquivoSelecionado = null;
+  var input = document.getElementById('upload-input');
+  if (input) input.value = '';
+  var info = document.getElementById('upload-info');
+  if (info) info.style.display = 'none';
+  var erro = document.getElementById('upload-erro');
+  if (erro) erro.style.display = 'none';
+  var status = document.getElementById('upload-status');
+  if (status) status.style.display = 'none';
+  var btn = document.getElementById('btn-analisar');
+  if (btn) {
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
+    btn.textContent = '✦ Analisar com IA';
+  }
+}
+
+function mostrarErroUpload(msg) {
+  var el = document.getElementById('upload-erro');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function arquivoEscolhido(input) {
+  var file = input.files[0];
+  if (!file) return;
+
+  document.getElementById('upload-erro').style.display = 'none';
+
+  if (file.size > 10 * 1024 * 1024) {
+    mostrarErroUpload('Arquivo muito grande. Limite: 10MB.');
+    input.value = '';
+    return;
+  }
+
+  var ext = file.name.split('.').pop().toLowerCase();
+  if (['pdf','docx','txt','md'].indexOf(ext) === -1) {
+    mostrarErroUpload('Tipo de arquivo não suportado. Use PDF, DOCX, TXT ou MD.');
+    input.value = '';
+    return;
+  }
+
+  arquivoSelecionado = file;
+
+  document.getElementById('upload-info').style.display = 'flex';
+  document.getElementById('upload-filename').textContent = file.name;
+  document.getElementById('upload-size').textContent = (file.size / 1024).toFixed(1) + ' KB';
+
+  var btn = document.getElementById('btn-analisar');
+  btn.disabled = false;
+  btn.style.opacity = '1';
+}
+
+async function extrairTextoDoArquivo(file) {
+  var ext = file.name.split('.').pop().toLowerCase();
+
+  if (ext === 'txt' || ext === 'md') {
+    return await file.text();
+  }
+
+  if (ext === 'docx') {
+    var arrayBuffer = await file.arrayBuffer();
+    var result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+    return result.value || '';
+  }
+
+  if (ext === 'pdf') {
+    if (typeof pdfjsLib === 'undefined') throw new Error('Biblioteca PDF.js não carregou. Recarregue a página.');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    var arrayBuffer = await file.arrayBuffer();
+    var pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    var texto = '';
+    for (var i = 1; i <= pdf.numPages; i++) {
+      var page = await pdf.getPage(i);
+      var content = await page.getTextContent();
+      texto += content.items.map(function(it) { return it.str; }).join(' ') + '\n\n';
+    }
+    return texto;
+  }
+
+  throw new Error('Tipo não suportado.');
+}
+
+async function analisarArquivo() {
+  if (!arquivoSelecionado) return;
+
+  var btn = document.getElementById('btn-analisar');
+  var statusEl = document.getElementById('upload-status');
+  var erroEl = document.getElementById('upload-erro');
+
+  btn.disabled = true;
+  btn.style.opacity = '0.5';
+  btn.textContent = 'Analisando seu documento...';
+  erroEl.style.display = 'none';
+  statusEl.style.display = 'block';
+  statusEl.textContent = 'Extraindo texto do arquivo...';
+
+  try {
+    var textoExtraido = await extrairTextoDoArquivo(arquivoSelecionado);
+
+    if (!textoExtraido || textoExtraido.trim().length < 50) {
+      throw new Error('Não consegui extrair texto suficiente do arquivo. Verifique se ele tem conteúdo legível ou preencha o formulário manualmente.');
+    }
+
+    statusEl.textContent = 'Gerando PRD com IA... isso leva uns 10-20 segundos.';
+
+    var resp = await fetch('/api/gerar-prd', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ texto: textoExtraido })
+    });
+
+    var data = await resp.json().catch(function() { return { ok: false, error: 'Resposta inválida do servidor.' }; });
+
+    if (!resp.ok || !data.ok) {
+      throw new Error(data.error || ('Erro ao gerar PRD (status ' + resp.status + ').'));
+    }
+
+    document.getElementById('prd-output').textContent = data.prd;
+    statusEl.style.display = 'none';
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.textContent = '✦ Analisar com IA';
+    goTo(7);
+  } catch (err) {
+    erroEl.textContent = (err && err.message) ? err.message : 'Erro ao processar o arquivo. Tenta novamente ou preencha o formulário manualmente.';
+    erroEl.style.display = 'block';
+    statusEl.style.display = 'none';
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.textContent = '✦ Analisar com IA';
+  }
+}
+
+function pularUpload() {
   goTo(0);
 }
 </script>
