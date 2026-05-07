@@ -417,6 +417,69 @@
     line-height: 1.5;
   }
 
+  /* Caminho 2 — identificação e blocos dinâmicos */
+  .ident-text {
+    font-size: 14px;
+    color: var(--text);
+    line-height: 1.6;
+  }
+  .ident-list {
+    padding-left: 1.4rem;
+    font-size: 14px;
+    color: var(--text);
+    line-height: 1.7;
+  }
+  .ident-list li { margin-bottom: 4px; }
+  .info-card {
+    background: var(--surface-2);
+    border: 1px dashed var(--border-hover);
+    border-radius: var(--radius-lg);
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.7;
+  }
+  .info-card strong { color: var(--text); }
+  .card-mini {
+    background: var(--surface-2);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+  }
+  .card-mini:last-child { margin-bottom: 0; }
+  .card-mini-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 8px;
+    line-height: 1.4;
+  }
+  .card-mini .options { gap: 5px; }
+  .card-mini .opt {
+    background: var(--surface);
+    padding: 8px 12px;
+  }
+  .empty-hint {
+    font-size: 13px;
+    color: var(--text-hint);
+    padding: 10px 12px;
+    background: var(--surface-2);
+    border-radius: 8px;
+    line-height: 1.5;
+  }
+  .kpi-list {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: var(--text-muted);
+    white-space: pre-wrap;
+    padding: 10px 14px;
+    background: var(--surface-2);
+    border-radius: 8px;
+    margin-bottom: 12px;
+    line-height: 1.7;
+  }
+
   @media (max-width: 480px) {
     .header h1 { font-size: 28px; }
     .step-title { font-size: 22px; }
@@ -463,9 +526,293 @@
       </div>
     </div>
 
+    <div class="card" id="card-tipo-doc" style="display:none">
+      <div class="card-label">Que tipo de documento é esse?</div>
+      <div class="options">
+        <label class="opt"><input type="radio" name="tipo-documento" value="ideia" onchange="escolheuTipoDoc(this)"><span class="opt-text">Este documento contém uma ideia de projeto clara e definida</span></label>
+        <label class="opt"><input type="radio" name="tipo-documento" value="curso" onchange="escolheuTipoDoc(this)"><span class="opt-text">Este documento é um curso, mentoria, transcrição ou anotações</span></label>
+      </div>
+    </div>
+
     <div class="nav">
       <button class="btn-back" onclick="pularUpload()">Pular e preencher manualmente</button>
       <button class="btn-primary" id="btn-analisar" onclick="analisarArquivo()" disabled style="opacity:0.5">✦ Analisar com IA</button>
+    </div>
+  </div>
+
+  <!-- STEP C2-CONFIRMAR: identificação automática (Caminho 2) -->
+  <div class="step" id="step-c2-confirmar">
+    <div class="step-eyebrow">Documento identificado</div>
+    <div class="step-title">Encontrei isso no seu documento</div>
+    <div class="step-desc">Confere se a leitura da IA está correta antes da gente continuar.</div>
+
+    <div class="card">
+      <div class="card-label">Tipo do documento</div>
+      <div id="ident-tipo" class="ident-text"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Objetivo fundamental</div>
+      <div id="ident-objetivo" class="ident-text"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Passos principais encontrados</div>
+      <ol id="ident-passos" class="ident-list"></ol>
+    </div>
+
+    <div class="nav">
+      <button class="btn-back" onclick="goTo('c2-corrigir')">Não, quero corrigir</button>
+      <button class="btn-primary green" onclick="confirmarIdentificacao()">Sim, está correto ›</button>
+    </div>
+  </div>
+
+  <!-- STEP C2-CORRIGIR: textarea livre de correção -->
+  <div class="step" id="step-c2-corrigir">
+    <div class="step-eyebrow">Correção</div>
+    <div class="step-title">O que precisa ajustar?</div>
+    <div class="step-desc">Anote o que está errado ou faltando. Mantemos os dados extraídos e usamos sua observação ao gerar o PRD final.</div>
+
+    <div class="card">
+      <div class="card-label">Sua observação</div>
+      <textarea id="c2-correcao" placeholder="Ex: O passo 3 não é 'definir nicho', é 'validar oferta'. Falta a etapa de pesquisa antes do conteúdo..."></textarea>
+    </div>
+
+    <div class="nav">
+      <button class="btn-back" onclick="goTo('c2-confirmar')">‹ Voltar</button>
+      <button class="btn-primary" onclick="confirmarIdentificacao()">Continuar ›</button>
+    </div>
+  </div>
+
+  <!-- STEP C2-B1: Fase atual e maior gargalo -->
+  <div class="step" id="step-c2-b1">
+    <div class="step-eyebrow">Bloco 1 de 6 — Fase atual e gargalo</div>
+    <div class="step-title">Onde você está nessa jornada?</div>
+    <div class="step-desc">Pra calibrar o sistema com a sua realidade.</div>
+
+    <div class="card">
+      <div class="card-label">Você já completou algum desses passos ou está começando do zero?</div>
+      <div class="options">
+        <label class="opt"><input type="radio" name="c2-p1" value="Começando do zero — nunca publiquei/executei nada" onchange="toggleOpt(this)"><span class="opt-text">Começando do zero — nunca publiquei/executei nada</span></label>
+        <label class="opt"><input type="radio" name="c2-p1" value="Já completei alguns passos mas sem consistência" onchange="toggleOpt(this)"><span class="opt-text">Já completei alguns passos mas sem consistência</span></label>
+        <label class="opt"><input type="radio" name="c2-p1" value="Já tenho rotina e quero automatizar" onchange="toggleOpt(this)"><span class="opt-text">Já tenho rotina e quero automatizar</span></label>
+        <label class="opt"><input type="radio" name="c2-p1" value="Já estou em escala e quero otimizar" onchange="toggleOpt(this)"><span class="opt-text">Já estou em escala e quero otimizar</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Qual passo do método é seu maior gargalo hoje?</div>
+      <div class="options" id="c2-p2"></div>
+    </div>
+
+    <div class="nav">
+      <button class="btn-back" onclick="goTo('c2-confirmar')">‹</button>
+      <button class="btn-primary" onclick="goTo('c2-b2')">Próximo ›</button>
+    </div>
+  </div>
+
+  <!-- STEP C2-B2: Configuração inicial -->
+  <div class="step" id="step-c2-b2">
+    <div class="step-eyebrow">Bloco 2 de 6 — Configuração inicial</div>
+    <div class="step-title">Como está a base?</div>
+    <div class="step-desc">Sobre os primeiros passos do método.</div>
+
+    <div class="card">
+      <div class="card-label">Você já executou o primeiro passo do método?</div>
+      <div class="options">
+        <label class="opt"><input type="radio" name="c2-p3" value="Sim — já está feito" onchange="toggleOpt(this)"><span class="opt-text">Sim — já está feito</span></label>
+        <label class="opt"><input type="radio" name="c2-p3" value="Não — preciso fazer do zero" onchange="toggleOpt(this)"><span class="opt-text">Não — preciso fazer do zero</span></label>
+        <label class="opt"><input type="radio" name="c2-p3" value="Parcialmente — fiz mas não da forma correta" onchange="toggleOpt(this)"><span class="opt-text">Parcialmente — fiz mas não da forma correta</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Em quais plataformas/canais você quer aplicar esse método?</div>
+      <div class="options" id="c2-p4"></div>
+      <textarea id="c2-p4-livre" placeholder="Outras plataformas (opcional)..." style="margin-top:10px"></textarea>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Já está configurado nessas plataformas?</div>
+      <div class="options">
+        <label class="opt"><input type="radio" name="c2-p5" value="Sim — todas configuradas" onchange="toggleOpt(this)"><span class="opt-text">Sim — todas configuradas</span></label>
+        <label class="opt"><input type="radio" name="c2-p5" value="Parcialmente — algumas sim" onchange="toggleOpt(this)"><span class="opt-text">Parcialmente — algumas sim</span></label>
+        <label class="opt"><input type="radio" name="c2-p5" value="Não — preciso configurar tudo" onchange="toggleOpt(this)"><span class="opt-text">Não — preciso configurar tudo</span></label>
+      </div>
+    </div>
+
+    <div class="nav">
+      <button class="btn-back" onclick="goTo('c2-b1')">‹</button>
+      <button class="btn-primary" onclick="goTo('c2-b3')">Próximo ›</button>
+    </div>
+  </div>
+
+  <!-- STEP C2-B3: Produção e execução -->
+  <div class="step" id="step-c2-b3">
+    <div class="step-eyebrow">Bloco 3 de 6 — Produção e execução</div>
+    <div class="step-title">Como você quer executar o método?</div>
+    <div class="step-desc">Baseado nos passos de execução do documento.</div>
+
+    <div class="card">
+      <div class="card-label">Qual modalidade de execução você quer priorizar?</div>
+      <div class="options" id="c2-p6"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Você tem alguma limitação importante? (pode marcar mais de uma)</div>
+      <div class="options">
+        <label class="opt"><input type="checkbox" name="c2-p7" value="Não posso aparecer na câmera / em público" onchange="toggleOpt(this)"><span class="opt-text">Não posso aparecer na câmera / em público</span></label>
+        <label class="opt"><input type="checkbox" name="c2-p7" value="Tenho menos de 1 hora por dia disponível" onchange="toggleOpt(this)"><span class="opt-text">Tenho menos de 1 hora por dia disponível</span></label>
+        <label class="opt"><input type="checkbox" name="c2-p7" value="Não tenho orçamento para ferramentas pagas" onchange="toggleOpt(this)"><span class="opt-text">Não tenho orçamento para ferramentas pagas</span></label>
+        <label class="opt"><input type="checkbox" name="c2-p7" value="Nenhuma limitação" onchange="toggleOpt(this)"><span class="opt-text">Nenhuma limitação</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Quais ferramentas você já usa?</div>
+      <div class="options" id="c2-p8"></div>
+      <textarea id="c2-p8-livre" placeholder="Outras ferramentas (opcional)..." style="margin-top:10px"></textarea>
+    </div>
+
+    <div class="nav">
+      <button class="btn-back" onclick="goTo('c2-b2')">‹</button>
+      <button class="btn-primary" onclick="goTo('c2-b31')">Próximo ›</button>
+    </div>
+  </div>
+
+  <!-- STEP C2-B31: Ganchos e insights -->
+  <div class="step" id="step-c2-b31">
+    <div class="step-eyebrow">Bloco 3.1 de 6 — Ganchos e insights</div>
+    <div class="step-title">Como o sistema deve aplicar o conteúdo?</div>
+    <div class="step-desc">Sobre ganchos, insights do curso e análise de padrões.</div>
+
+    <div class="card">
+      <div class="card-label">Como quer que o sistema te ajude com ganchos?</div>
+      <div class="options">
+        <label class="opt"><input type="radio" name="c2-p9" value="Gerar 3 opções automaticamente para cada execução" onchange="toggleOpt(this)"><span class="opt-text">Gerar 3 opções automaticamente para cada execução</span></label>
+        <label class="opt"><input type="radio" name="c2-p9" value="Manter biblioteca de ganchos validados do meu nicho" onchange="toggleOpt(this)"><span class="opt-text">Manter biblioteca de ganchos validados do meu nicho</span></label>
+        <label class="opt"><input type="radio" name="c2-p9" value="Me alertar quando não tiver gancho definido" onchange="toggleOpt(this)"><span class="opt-text">Me alertar quando não tiver gancho definido</span></label>
+        <label class="opt"><input type="radio" name="c2-p9" value="Analisar quais ganchos performam melhor nos meus resultados" onchange="toggleOpt(this)"><span class="opt-text">Analisar quais ganchos performam melhor nos meus resultados</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Quais insights do curso quer que o sistema aplique ativamente? (pode marcar mais de um)</div>
+      <div class="options" id="c2-p10"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">O sistema deve analisar seus resultados e identificar padrões?</div>
+      <div class="options">
+        <label class="opt"><input type="radio" name="c2-p11" value="Sim — relatório semanal automático" onchange="toggleOpt(this)"><span class="opt-text">Sim — e me enviar relatório semanal automático</span></label>
+        <label class="opt"><input type="radio" name="c2-p11" value="Sim — sob pedido" onchange="toggleOpt(this)"><span class="opt-text">Sim — mas só quando eu pedir</span></label>
+        <label class="opt"><input type="radio" name="c2-p11" value="Não — análise manual" onchange="toggleOpt(this)"><span class="opt-text">Não — prefiro analisar manualmente</span></label>
+      </div>
+    </div>
+
+    <div class="info-card">
+      <div style="font-weight:500; color:var(--text); margin-bottom:6px">Como o sistema usa cada ferramenta:</div>
+      <strong>Gemini</strong> → transcrição de vídeos (único que faz isso hoje)<br>
+      <strong>Claude Sonnet</strong> → scripts, ganchos e análise<br>
+      <strong>Claude Haiku</strong> → alertas e tarefas repetitivas<br>
+      <strong>Claude + Brave Search</strong> → pesquisa de nichos e termos
+    </div>
+
+    <div class="nav">
+      <button class="btn-back" onclick="goTo('c2-b3')">‹</button>
+      <button class="btn-primary" onclick="goTo('c2-b4')">Próximo ›</button>
+    </div>
+  </div>
+
+  <!-- STEP C2-B4: O que o sistema deve e não deve fazer -->
+  <div class="step" id="step-c2-b4">
+    <div class="step-eyebrow">Bloco 4 de 6 — Limites do sistema</div>
+    <div class="step-title">O que ele deve e o que NÃO deve fazer</div>
+    <div class="step-desc">Define o comportamento de cada passo e os limites éticos.</div>
+
+    <div class="card">
+      <div class="card-label">Para cada passo encontrado, o que prefere?</div>
+      <div id="c2-p12"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Quando tiver dúvida, o sistema deve:</div>
+      <div class="options">
+        <label class="opt"><input type="radio" name="c2-p13" value="Indicar módulo e aula do curso" onchange="toggleOpt(this)"><span class="opt-text">Me indicar o módulo e aula exata do curso para assistir</span></label>
+        <label class="opt"><input type="radio" name="c2-p13" value="Explicar com base no documento" onchange="toggleOpt(this)"><span class="opt-text">Me explicar com base no conteúdo do documento</span></label>
+        <label class="opt"><input type="radio" name="c2-p13" value="Os dois — explicar e indicar referência" onchange="toggleOpt(this)"><span class="opt-text">Os dois — explicar e indicar a referência</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">O que o sistema NÃO deve fazer?</div>
+      <div class="options">
+        <label class="opt"><input type="checkbox" name="c2-p14" value="Publicar ou executar sem minha aprovação" onchange="toggleOpt(this)"><span class="opt-text">Publicar ou executar sem minha aprovação</span></label>
+        <label class="opt"><input type="checkbox" name="c2-p14" value="Acessar minhas contas sem permissão explícita" onchange="toggleOpt(this)"><span class="opt-text">Acessar minhas contas sem permissão explícita</span></label>
+        <label class="opt"><input type="checkbox" name="c2-p14" value="Fazer tarefas que dependem de habilidade humana (editar vídeo, aparecer na câmera)" onchange="toggleOpt(this)"><span class="opt-text">Fazer tarefas que dependem de habilidade humana (ex: editar vídeo, aparecer na câmera)</span></label>
+      </div>
+      <textarea id="c2-p14-livre" placeholder="Outro: o que mais o sistema NÃO deve fazer? (opcional)" style="margin-top:10px"></textarea>
+    </div>
+
+    <div class="nav">
+      <button class="btn-back" onclick="goTo('c2-b31')">‹</button>
+      <button class="btn-primary" onclick="goTo('c2-b5')">Próximo ›</button>
+    </div>
+  </div>
+
+  <!-- STEP C2-B5: Métricas e metas -->
+  <div class="step" id="step-c2-b5">
+    <div class="step-eyebrow">Bloco 5 de 6 — Métricas e metas</div>
+    <div class="step-title">Como medimos o sucesso?</div>
+
+    <div class="card">
+      <div class="card-label">O documento menciona estes critérios/KPIs:</div>
+      <div id="c2-p15-lista" class="kpi-list"></div>
+      <div class="card-label">Quer usar esses critérios exatamente como ensinado?</div>
+      <div class="options">
+        <label class="opt"><input type="radio" name="c2-p15" value="Usar como está no curso" onchange="toggleOpt(this)"><span class="opt-text">Sim — usar como está no curso</span></label>
+        <label class="opt"><input type="radio" name="c2-p15" value="Ajustar valores" onchange="toggleOpt(this)"><span class="opt-text">Quero ajustar alguns valores</span></label>
+        <label class="opt"><input type="radio" name="c2-p15" value="Sistema decide" onchange="toggleOpt(this)"><span class="opt-text">Não sei — quero que o sistema decida</span></label>
+      </div>
+      <textarea id="c2-p15-livre" placeholder="Se quer ajustar, descreva como (opcional)" style="margin-top:10px"></textarea>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Quais metas quer acompanhar?</div>
+      <div class="options" id="c2-p16"></div>
+      <textarea id="c2-p16-livre" placeholder="Outras metas (opcional)..." style="margin-top:10px"></textarea>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Como quer receber alertas e acompanhar progresso?</div>
+      <div class="options">
+        <label class="opt"><input type="radio" name="c2-p17" value="Telegram (mensagem diária)" onchange="toggleOpt(this)"><span class="opt-text">Telegram (mensagem automática diária)</span></label>
+        <label class="opt"><input type="radio" name="c2-p17" value="Email" onchange="toggleOpt(this)"><span class="opt-text">Email</span></label>
+        <label class="opt"><input type="radio" name="c2-p17" value="Painel visual (dashboard)" onchange="toggleOpt(this)"><span class="opt-text">Painel visual (dashboard)</span></label>
+        <label class="opt"><input type="radio" name="c2-p17" value="Tudo junto" onchange="toggleOpt(this)"><span class="opt-text">Tudo junto</span></label>
+      </div>
+    </div>
+
+    <div class="nav">
+      <button class="btn-back" onclick="goTo('c2-b4')">‹</button>
+      <button class="btn-primary" onclick="goTo('c2-b6')">Próximo ›</button>
+    </div>
+  </div>
+
+  <!-- STEP C2-B6: Campo livre final -->
+  <div class="step" id="step-c2-b6">
+    <div class="step-eyebrow">Bloco 6 de 6 — Campo livre</div>
+    <div class="step-title">Algo mais que você queira adicionar?</div>
+    <div class="step-desc">Última etapa antes de gerar o PRD.</div>
+
+    <div class="card">
+      <div class="card-label">Tem algo específico que quer que o sistema faça e não foi mencionado acima? <span class="optional">opcional</span></div>
+      <textarea id="c2-p18" placeholder="Ex: Quero que o sistema crie automaticamente uma planilha de acompanhamento mensal e me lembre todo dia 1 de revisar..."></textarea>
+    </div>
+
+    <div class="nav">
+      <button class="btn-back" onclick="goTo('c2-b5')">‹</button>
+      <button class="btn-primary green" id="btn-gerar-prd-curso" onclick="gerarPRDCurso()">✦ Gerar PRD</button>
     </div>
   </div>
 
@@ -816,21 +1163,45 @@
 <script>
 var current = 'pre';
 var labels = ['Início','Problema','Solução','Como funciona','Funcionalidades','Pessoas','Referências','Concluído'];
+var caminho = null; // 'ideia' | 'curso'
+var docCurso = { texto: '', identificacao: null, correcao: '' };
+
+var c2BlocoMap = {
+  'c2-confirmar': { idx: 1, label: 'Identificação', counter: '' },
+  'c2-corrigir':  { idx: 1, label: 'Correção', counter: '' },
+  'c2-b1':  { idx: 2, label: 'Bloco 1 — Fase atual', counter: '1 / 6' },
+  'c2-b2':  { idx: 3, label: 'Bloco 2 — Configuração', counter: '2 / 6' },
+  'c2-b3':  { idx: 4, label: 'Bloco 3 — Execução', counter: '3 / 6' },
+  'c2-b31': { idx: 5, label: 'Bloco 3.1 — Ganchos', counter: '3.1 / 6' },
+  'c2-b4':  { idx: 6, label: 'Bloco 4 — Limites', counter: '4 / 6' },
+  'c2-b5':  { idx: 7, label: 'Bloco 5 — Métricas', counter: '5 / 6' },
+  'c2-b6':  { idx: 8, label: 'Bloco 6 — Livre', counter: '6 / 6' }
+};
 
 function goTo(n) {
   document.getElementById('step-' + current).classList.remove('active');
   document.getElementById('step-' + n).classList.add('active');
   current = n;
+
   if (n === 'pre') {
     document.getElementById('progress').style.width = '0%';
     document.getElementById('step-label-meta').textContent = 'Início';
     document.getElementById('step-counter').textContent = '';
-  } else {
+  } else if (typeof n === 'number') {
     var pct = Math.round((n / 7) * 100);
     document.getElementById('progress').style.width = pct + '%';
     document.getElementById('step-label-meta').textContent = labels[n] || '';
     document.getElementById('step-counter').textContent = n > 0 && n < 7 ? (n) + ' / 6' : '';
+  } else if (c2BlocoMap[n]) {
+    var info = c2BlocoMap[n];
+    document.getElementById('progress').style.width = Math.round((info.idx / 9) * 100) + '%';
+    document.getElementById('step-label-meta').textContent = info.label;
+    document.getElementById('step-counter').textContent = info.counter;
   }
+
+  if (n === 'c2-confirmar') preencheConfirmacao();
+  if (typeof n === 'string' && n.indexOf('c2-b') === 0) renderBlocoCurso(n);
+
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -991,14 +1362,20 @@ var arquivoSelecionado = null;
 
 function resetarUpload() {
   arquivoSelecionado = null;
+  caminho = null;
+  docCurso = { texto: '', identificacao: null, correcao: '' };
+
   var input = document.getElementById('upload-input');
   if (input) input.value = '';
-  var info = document.getElementById('upload-info');
-  if (info) info.style.display = 'none';
-  var erro = document.getElementById('upload-erro');
-  if (erro) erro.style.display = 'none';
-  var status = document.getElementById('upload-status');
-  if (status) status.style.display = 'none';
+  ['upload-info', 'upload-erro', 'upload-status', 'card-tipo-doc'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  document.querySelectorAll('input[name="tipo-documento"]').forEach(function(r) {
+    r.checked = false;
+    var opt = r.closest('.opt');
+    if (opt) opt.classList.remove('sel');
+  });
   var btn = document.getElementById('btn-analisar');
   if (btn) {
     btn.disabled = true;
@@ -1037,10 +1414,20 @@ function arquivoEscolhido(input) {
   document.getElementById('upload-info').style.display = 'flex';
   document.getElementById('upload-filename').textContent = file.name;
   document.getElementById('upload-size').textContent = (file.size / 1024).toFixed(1) + ' KB';
+  document.getElementById('card-tipo-doc').style.display = 'block';
 
+  // botão só habilita quando user também escolher o tipo de documento
   var btn = document.getElementById('btn-analisar');
-  btn.disabled = false;
-  btn.style.opacity = '1';
+  btn.disabled = !caminho;
+  btn.style.opacity = caminho ? '1' : '0.5';
+}
+
+function escolheuTipoDoc(el) {
+  toggleOpt(el);
+  caminho = el.value;
+  var btn = document.getElementById('btn-analisar');
+  btn.disabled = !arquivoSelecionado;
+  btn.style.opacity = arquivoSelecionado ? '1' : '0.5';
 }
 
 async function extrairTextoDoArquivo(file) {
@@ -1074,7 +1461,7 @@ async function extrairTextoDoArquivo(file) {
 }
 
 async function analisarArquivo() {
-  if (!arquivoSelecionado) return;
+  if (!arquivoSelecionado || !caminho) return;
 
   var btn = document.getElementById('btn-analisar');
   var statusEl = document.getElementById('upload-status');
@@ -1082,7 +1469,7 @@ async function analisarArquivo() {
 
   btn.disabled = true;
   btn.style.opacity = '0.5';
-  btn.textContent = 'Analisando seu documento...';
+  btn.textContent = caminho === 'curso' ? 'Identificando documento...' : 'Analisando seu documento...';
   erroEl.style.display = 'none';
   statusEl.style.display = 'block';
   statusEl.textContent = 'Extraindo texto do arquivo...';
@@ -1094,26 +1481,40 @@ async function analisarArquivo() {
       throw new Error('Não consegui extrair texto suficiente do arquivo. Verifique se ele tem conteúdo legível ou preencha o formulário manualmente.');
     }
 
-    statusEl.textContent = 'Gerando PRD com IA... isso leva uns 10-20 segundos.';
+    docCurso.texto = textoExtraido;
 
-    var resp = await fetch('/api/gerar-prd', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ texto: textoExtraido })
-    });
-
-    var data = await resp.json().catch(function() { return { ok: false, error: 'Resposta inválida do servidor.' }; });
-
-    if (!resp.ok || !data.ok) {
-      throw new Error(data.error || ('Erro ao gerar PRD (status ' + resp.status + ').'));
+    if (caminho === 'ideia') {
+      statusEl.textContent = 'Gerando PRD com IA... isso leva uns 10-20 segundos.';
+      var resp = await fetch('/api/gerar-prd', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ texto: textoExtraido, tipo: 'ideia' })
+      });
+      var data = await resp.json().catch(function() { return { ok: false, error: 'Resposta inválida do servidor.' }; });
+      if (!resp.ok || !data.ok) throw new Error(data.error || ('Erro ao gerar PRD (status ' + resp.status + ').'));
+      document.getElementById('prd-output').textContent = data.prd;
+      statusEl.style.display = 'none';
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.textContent = '✦ Analisar com IA';
+      goTo(7);
+    } else {
+      // caminho 2: identificação do documento
+      statusEl.textContent = 'Identificando o documento... isso leva uns 10-20 segundos.';
+      var resp = await fetch('/api/gerar-prd', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ texto: textoExtraido, tipo: 'identificar' })
+      });
+      var data = await resp.json().catch(function() { return { ok: false, error: 'Resposta inválida do servidor.' }; });
+      if (!resp.ok || !data.ok) throw new Error(data.error || ('Erro ao identificar documento (status ' + resp.status + ').'));
+      docCurso.identificacao = data.identificacao || {};
+      statusEl.style.display = 'none';
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.textContent = '✦ Analisar com IA';
+      goTo('c2-confirmar');
     }
-
-    document.getElementById('prd-output').textContent = data.prd;
-    statusEl.style.display = 'none';
-    btn.disabled = false;
-    btn.style.opacity = '1';
-    btn.textContent = '✦ Analisar com IA';
-    goTo(7);
   } catch (err) {
     erroEl.textContent = (err && err.message) ? err.message : 'Erro ao processar o arquivo. Tenta novamente ou preencha o formulário manualmente.';
     erroEl.style.display = 'block';
@@ -1126,6 +1527,172 @@ async function analisarArquivo() {
 
 function pularUpload() {
   goTo(0);
+}
+
+/* ========== CAMINHO 2 — confirmação, render dinâmico, geração ========== */
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
+function optHTML(value, label, type, name) {
+  var v = escapeHtml(value);
+  var l = escapeHtml(label);
+  if (type === 'radio') {
+    return '<label class="opt"><input type="radio" name="' + escapeHtml(name) + '" value="' + v + '" onchange="toggleOpt(this)"><span class="opt-text">' + l + '</span></label>';
+  }
+  return '<label class="opt"><input type="checkbox" value="' + v + '" onchange="toggleOpt(this)"><span class="opt-text">' + l + '</span></label>';
+}
+
+function preencheConfirmacao() {
+  var ident = docCurso.identificacao || {};
+  document.getElementById('ident-tipo').textContent = ident.tipo_documento || '(não identificado)';
+  document.getElementById('ident-objetivo').textContent = ident.objetivo_fundamental || '(não identificado)';
+  var ol = document.getElementById('ident-passos');
+  ol.innerHTML = '';
+  var passos = ident.passos_principais || [];
+  if (passos.length) {
+    passos.forEach(function(p) {
+      var li = document.createElement('li');
+      li.textContent = p;
+      ol.appendChild(li);
+    });
+  } else {
+    ol.innerHTML = '<li style="color:var(--text-hint); list-style:none; margin-left:-1.4rem">(nenhum passo identificado)</li>';
+  }
+}
+
+function confirmarIdentificacao() {
+  if (current === 'c2-corrigir') {
+    docCurso.correcao = document.getElementById('c2-correcao').value || '';
+  }
+  goTo('c2-b1');
+}
+
+function renderBlocoCurso(bloco) {
+  var ident = docCurso.identificacao || {};
+  var passos = ident.passos_principais || [];
+  var emptyHint = function(msg) { return '<div class="empty-hint">' + msg + '</div>'; };
+
+  if (bloco === 'c2-b1') {
+    var html = passos.map(function(p) { return optHTML(p, p, 'radio', 'c2-p2'); }).join('');
+    html += optHTML('Tudo — preciso de ajuda em todas as etapas', 'Tudo — preciso de ajuda em todas as etapas', 'radio', 'c2-p2');
+    document.getElementById('c2-p2').innerHTML = html;
+  } else if (bloco === 'c2-b2') {
+    var plat = ident.plataformas_mencionadas || [];
+    document.getElementById('c2-p4').innerHTML = plat.length
+      ? plat.map(function(p) { return optHTML(p, p, 'checkbox', ''); }).join('')
+      : emptyHint('Nenhuma plataforma específica identificada — use o campo livre abaixo.');
+  } else if (bloco === 'c2-b3') {
+    var mod = ident.modalidades_execucao || [];
+    document.getElementById('c2-p6').innerHTML = mod.length
+      ? mod.map(function(p) { return optHTML(p, p, 'radio', 'c2-p6'); }).join('')
+      : emptyHint('Nenhuma modalidade específica identificada no documento.');
+    var ferr = ident.ferramentas_mencionadas || [];
+    document.getElementById('c2-p8').innerHTML = ferr.length
+      ? ferr.map(function(p) { return optHTML(p, p, 'checkbox', ''); }).join('')
+      : emptyHint('Nenhuma ferramenta específica identificada — use o campo livre abaixo.');
+  } else if (bloco === 'c2-b31') {
+    var ins = ident.insights_principais || [];
+    var html = ins.map(function(p) { return optHTML(p, p, 'checkbox', ''); }).join('');
+    if (ins.length) html += optHTML('__todos__', 'Todos os insights acima', 'checkbox', '');
+    document.getElementById('c2-p10').innerHTML = html || emptyHint('Nenhum insight específico identificado no documento.');
+  } else if (bloco === 'c2-b4') {
+    document.getElementById('c2-p12').innerHTML = passos.length ? passos.map(function(p, i) {
+      return '<div class="card-mini">' +
+        '<div class="card-mini-label">' + escapeHtml(p) + '</div>' +
+        '<div class="options">' +
+          '<label class="opt"><input type="radio" name="c2-p12-' + i + '" value="Automatizar" onchange="toggleOpt(this)"><span class="opt-text">Automatizar</span></label>' +
+          '<label class="opt"><input type="radio" name="c2-p12-' + i + '" value="Mostrar opções" onchange="toggleOpt(this)"><span class="opt-text">Mostrar opções</span></label>' +
+          '<label class="opt"><input type="radio" name="c2-p12-' + i + '" value="Só lembrar" onchange="toggleOpt(this)"><span class="opt-text">Só lembrar</span></label>' +
+        '</div>' +
+      '</div>';
+    }).join('') : emptyHint('Nenhum passo identificado no documento.');
+  } else if (bloco === 'c2-b5') {
+    var kpis = ident.kpis_mencionados || [];
+    document.getElementById('c2-p15-lista').textContent = kpis.length
+      ? kpis.map(function(k) { return '• ' + k; }).join('\n')
+      : '(nenhum KPI específico mencionado no documento)';
+    var metas = ident.metas_mencionadas || [];
+    document.getElementById('c2-p16').innerHTML = metas.length
+      ? metas.map(function(p) { return optHTML(p, p, 'checkbox', ''); }).join('')
+      : emptyHint('Nenhuma meta específica identificada — use o campo livre abaixo.');
+  }
+}
+
+function getCheckedByName(name) {
+  return Array.from(document.querySelectorAll('input[name="' + name + '"]:checked')).map(function(i) { return i.value; });
+}
+
+function coletarRespostasCurso() {
+  var passos = (docCurso.identificacao || {}).passos_principais || [];
+  var p12 = {};
+  passos.forEach(function(p, i) {
+    var v = getRadio('c2-p12-' + i);
+    if (v) p12[p] = v;
+  });
+  return {
+    p1_fase: getRadio('c2-p1'),
+    p2_gargalo: getRadio('c2-p2'),
+    p3_primeiro_passo: getRadio('c2-p3'),
+    p4_plataformas: getChecked('c2-p4'),
+    p4_plataformas_outras: (document.getElementById('c2-p4-livre').value || '').trim(),
+    p5_configuracao: getRadio('c2-p5'),
+    p6_modalidade: getRadio('c2-p6'),
+    p7_limitacoes: getCheckedByName('c2-p7'),
+    p8_ferramentas: getChecked('c2-p8'),
+    p8_ferramentas_outras: (document.getElementById('c2-p8-livre').value || '').trim(),
+    p9_ganchos: getRadio('c2-p9'),
+    p10_insights: getChecked('c2-p10'),
+    p11_padroes: getRadio('c2-p11'),
+    p12_modos_por_passo: p12,
+    p13_duvida: getRadio('c2-p13'),
+    p14_nao_fazer: getCheckedByName('c2-p14'),
+    p14_nao_fazer_outro: (document.getElementById('c2-p14-livre').value || '').trim(),
+    p15_kpis: getRadio('c2-p15'),
+    p15_kpis_ajuste: (document.getElementById('c2-p15-livre').value || '').trim(),
+    p16_metas: getChecked('c2-p16'),
+    p16_metas_outras: (document.getElementById('c2-p16-livre').value || '').trim(),
+    p17_alertas: getRadio('c2-p17'),
+    p18_livre: (document.getElementById('c2-p18').value || '').trim()
+  };
+}
+
+async function gerarPRDCurso() {
+  var btn = document.getElementById('btn-gerar-prd-curso');
+  btn.disabled = true;
+  btn.style.opacity = '0.6';
+  btn.textContent = 'Gerando PRD com IA...';
+
+  var respostas = coletarRespostasCurso();
+
+  try {
+    var resp = await fetch('/api/gerar-prd', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        texto: docCurso.texto,
+        tipo: 'curso',
+        identificacao: docCurso.identificacao,
+        correcao: docCurso.correcao || '',
+        respostas: respostas
+      })
+    });
+    var data = await resp.json().catch(function() { return { ok: false, error: 'Resposta inválida do servidor.' }; });
+    if (!resp.ok || !data.ok) throw new Error(data.error || ('Erro ao gerar PRD (status ' + resp.status + ').'));
+    document.getElementById('prd-output').textContent = data.prd;
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.textContent = '✦ Gerar PRD';
+    goTo(7);
+  } catch (err) {
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.textContent = '✦ Gerar PRD';
+    alert('Erro ao gerar o PRD: ' + (err && err.message ? err.message : err) + '\n\nTente novamente.');
+  }
 }
 </script>
 </body>
