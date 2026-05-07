@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Formulário PRD — Gerador de Projetos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --coral: #D85A30;
+    --coral-dark: #993C1D;
+    --coral-light: #FAECE7;
+    --green: #1D9E75;
+    --green-light: #E1F5EE;
+    --text: #1a1a1a;
+    --text-muted: #6b6b6b;
+    --text-hint: #aaaaaa;
+    --border: rgba(0,0,0,0.1);
+    --border-hover: rgba(0,0,0,0.25);
+    --bg: #f7f5f2;
+    --surface: #ffffff;
+    --surface-2: #f2f0ec;
+    --radius: 10px;
+    --radius-lg: 16px;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 2rem 1rem 4rem;
+  }
+
+  .container {
+    max-width: 640px;
+    margin: 0 auto;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+    padding-top: 1rem;
+  }
+
+  .header-badge {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--coral);
+    background: var(--coral-light);
+    border-radius: 20px;
+    padding: 4px 14px;
+    margin-bottom: 14px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .header h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 36px;
+    font-weight: 400;
+    color: var(--text);
+    line-height: 1.2;
+    margin-bottom: 10px;
+  }
+
+  .header p {
+    font-size: 15px;
+    color: var(--text-muted);
+    line-height: 1.6;
+    max-width: 440px;
+    margin: 0 auto;
+  }
+
+  .progress-wrap {
+    margin-bottom: 2rem;
+  }
+
+  .progress-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--text-hint);
+    margin-bottom: 8px;
+  }
+
+  .progress-track {
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+  }
+
+  .progress-fill {
+    height: 3px;
+    background: var(--coral);
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+
+  .step { display: none; }
+  .step.active { display: block; animation: fadeIn 0.25s ease; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .step-eyebrow {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--coral);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+  }
+
+  .step-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px;
+    font-weight: 400;
+    color: var(--text);
+    margin-bottom: 8px;
+    line-height: 1.2;
+  }
+
+  .step-desc {
+    font-size: 14px;
+    color: var(--text-muted);
+    line-height: 1.65;
+    margin-bottom: 1.75rem;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+  }
+
+  .card-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .optional {
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--text-hint);
+    background: var(--surface-2);
+    border-radius: 4px;
+    padding: 2px 7px;
+  }
+
+  .options { display: flex; flex-direction: column; gap: 7px; }
+
+  .opt {
+    display: flex;
+    align-items: flex-start;
+    gap: 11px;
+    padding: 11px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    background: var(--surface-2);
+    transition: border-color 0.15s, background 0.15s;
+    user-select: none;
+  }
+
+  .opt:hover { border-color: var(--border-hover); }
+
+  .opt.sel {
+    border-color: var(--coral);
+    background: var(--coral-light);
+  }
+
+  .opt input {
+    margin-top: 2px;
+    flex-shrink: 0;
+    accent-color: var(--coral);
+    width: 15px;
+    height: 15px;
+  }
+
+  .opt-text {
+    font-size: 14px;
+    color: var(--text);
+    line-height: 1.45;
+  }
+
+  input[type="text"], textarea {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 11px 14px;
+    font-size: 14px;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text);
+    background: var(--surface-2);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  input[type="text"]:focus, textarea:focus {
+    border-color: var(--coral);
+  }
+
+  input[type="text"] { font-size: 16px; }
+
+  input::placeholder, textarea::placeholder { color: var(--text-hint); }
+
+  textarea {
+    resize: vertical;
+    min-height: 80px;
+    line-height: 1.6;
+    margin-top: 10px;
+  }
+
+  .nav {
+    display: flex;
+    gap: 10px;
+    margin-top: 1.75rem;
+  }
+
+  .btn-primary {
+    flex: 1;
+    padding: 14px 20px;
+    background: var(--coral);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 15px;
+    font-weight: 500;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    transition: background 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .btn-primary:hover { background: var(--coral-dark); }
+  .btn-primary.green { background: var(--green); }
+  .btn-primary.green:hover { background: #0F6E56; }
+
+  .btn-back {
+    padding: 14px 18px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text-muted);
+    font-size: 15px;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .btn-back:hover { background: var(--surface-2); border-color: var(--border-hover); }
+
+  .start-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .start-card label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+  }
+
+  .output-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-top: 1rem;
+  }
+
+  .output-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .output-header span {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+  }
+
+  .output-body {
+    padding: 1.25rem;
+    max-height: 420px;
+    overflow-y: auto;
+  }
+
+  .output-body pre {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    color: var(--text);
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.7;
+  }
+
+  .copy-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface-2);
+    color: var(--text-muted);
+    font-size: 12px;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .copy-btn:hover { background: var(--border); }
+
+  .success-icon {
+    width: 56px;
+    height: 56px;
+    background: var(--green-light);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.25rem;
+    font-size: 24px;
+  }
+
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 1.5rem 0;
+  }
+
+  @media (max-width: 480px) {
+    .header h1 { font-size: 28px; }
+    .step-title { font-size: 22px; }
+    body { padding: 1.25rem 0.75rem 3rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <div class="header-badge">Gerador de PRD</div>
+    <h1>Transforme sua ideia em projeto</h1>
+    <p>Responda algumas perguntas simples. No final, geramos um documento técnico completo — sem precisar saber nada de tecnologia.</p>
+  </div>
+
+  <div class="progress-wrap">
+    <div class="progress-meta">
+      <span id="step-label-meta">Início</span>
+      <span id="step-counter">0 / 6</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progress" style="width:0%"></div>
+    </div>
+  </div>
+
+  <!-- STEP 0: START -->
+  <div class="step active" id="step-0">
+    <div class="step-eyebrow">Vamos começar</div>
+    <div class="step-title">Qual é o nome do seu projeto?</div>
+    <div class="step-desc">Não precisa ser o nome definitivo. Pode ser algo simples que descreva o que você quer construir.</div>
+    <div class="start-card">
+      <label for="nome">Nome do projeto</label>
+      <input type="text" id="nome" placeholder="Ex: Agente de atendimento, Monitor de vendas, Sistema de conteúdo..." />
+    </div>
+    <div class="nav">
+      <button class="btn-primary" onclick="goTo(1)">Começar ›</button>
+    </div>
+  </div>
+
+  <!-- STEP 1: PROBLEMA -->
+  <div class="step" id="step-1">
+    <div class="step-eyebrow">Passo 1 de 6 — Problema</div>
+    <div class="step-title">Como está a situação hoje?</div>
+    <div class="step-desc">Nos conte como você lida com esse problema agora. Pode marcar mais de uma opção.</div>
+
+    <div class="card">
+      <div class="card-label">Como você resolve isso hoje?</div>
+      <div class="options" id="p1a">
+        <label class="opt"><input type="checkbox" value="Faço tudo manualmente" onchange="toggleOpt(this)"><span class="opt-text">Faço tudo na mão, manualmente</span></label>
+        <label class="opt"><input type="checkbox" value="Uso planilhas ou documentos" onchange="toggleOpt(this)"><span class="opt-text">Uso planilhas ou documentos</span></label>
+        <label class="opt"><input type="checkbox" value="Uso um sistema que não atende bem" onchange="toggleOpt(this)"><span class="opt-text">Uso um sistema que não atende bem</span></label>
+        <label class="opt"><input type="checkbox" value="Não tenho processo definido" onchange="toggleOpt(this)"><span class="opt-text">Não tenho processo definido</span></label>
+        <label class="opt"><input type="checkbox" value="Dependo de outras pessoas para isso" onchange="toggleOpt(this)"><span class="opt-text">Dependo de outras pessoas para isso</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Quanto tempo gasta nisso por semana?</div>
+      <div class="options" id="p1b">
+        <label class="opt"><input type="radio" name="tempo" value="Menos de 1 hora por semana" onchange="toggleOpt(this)"><span class="opt-text">Menos de 1 hora</span></label>
+        <label class="opt"><input type="radio" name="tempo" value="Entre 1 e 5 horas por semana" onchange="toggleOpt(this)"><span class="opt-text">Entre 1 e 5 horas</span></label>
+        <label class="opt"><input type="radio" name="tempo" value="Entre 5 e 20 horas por semana" onchange="toggleOpt(this)"><span class="opt-text">Entre 5 e 20 horas</span></label>
+        <label class="opt"><input type="radio" name="tempo" value="Mais de 20 horas por semana" onchange="toggleOpt(this)"><span class="opt-text">Mais de 20 horas</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">O que acontece quando isso falha ou atrasa?</div>
+      <div class="options" id="p1c">
+        <label class="opt"><input type="checkbox" value="Perco dinheiro diretamente" onchange="toggleOpt(this)"><span class="opt-text">Perco dinheiro diretamente</span></label>
+        <label class="opt"><input type="checkbox" value="Perco clientes ou oportunidades" onchange="toggleOpt(this)"><span class="opt-text">Perco clientes ou oportunidades</span></label>
+        <label class="opt"><input type="checkbox" value="Minha equipe fica travada" onchange="toggleOpt(this)"><span class="opt-text">Minha equipe fica travada</span></label>
+        <label class="opt"><input type="checkbox" value="Gera estresse e impacto financeiro" onchange="toggleOpt(this)"><span class="opt-text">Gera estresse e impacto financeiro</span></label>
+        <label class="opt"><input type="checkbox" value="Não sei medir o impacto" onchange="toggleOpt(this)"><span class="opt-text">Não sei medir o impacto</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Descreva com suas palavras o que mais te incomoda <span class="optional">opcional</span></div>
+      <textarea id="p1livre" placeholder="Ex: Perco muito tempo buscando informação em lugares diferentes e nunca sei onde parei..."></textarea>
+    </div>
+
+    <div class="nav">
+      <button class="btn-back" onclick="goTo(0)">‹</button>
+      <button class="btn-primary" onclick="goTo(2)">Próximo ›</button>
+    </div>
+  </div>
+
+  <!-- STEP 2: SOLUÇÃO -->
+  <div class="step" id="step-2">
+    <div class="step-eyebrow">Passo 2 de 6 — Solução</div>
+    <div class="step-title">O que você quer que o sistema faça?</div>
+    <div class="step-desc">Pense no resultado ideal. Pode marcar mais de uma opção.</div>
+
+    <div class="card">
+      <div class="card-label">O que você quer parar de fazer manualmente?</div>
+      <div class="options" id="p2a">
+        <label class="opt"><input type="checkbox" value="Buscar e organizar informações" onchange="toggleOpt(this)"><span class="opt-text">Buscar e organizar informações</span></label>
+        <label class="opt"><input type="checkbox" value="Responder perguntas repetitivas" onchange="toggleOpt(this)"><span class="opt-text">Responder perguntas repetitivas</span></label>
+        <label class="opt"><input type="checkbox" value="Gerar relatórios e resumos" onchange="toggleOpt(this)"><span class="opt-text">Gerar relatórios e resumos</span></label>
+        <label class="opt"><input type="checkbox" value="Agendar e lembrar tarefas" onchange="toggleOpt(this)"><span class="opt-text">Agendar e lembrar tarefas</span></label>
+        <label class="opt"><input type="checkbox" value="Produzir conteúdo (textos, posts, emails)" onchange="toggleOpt(this)"><span class="opt-text">Produzir conteúdo (textos, posts, emails)</span></label>
+        <label class="opt"><input type="checkbox" value="Monitorar algo e receber alertas" onchange="toggleOpt(this)"><span class="opt-text">Monitorar algo e receber alertas quando mudar</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Como quer receber os resultados?</div>
+      <div class="options" id="p2b">
+        <label class="opt"><input type="checkbox" value="Receber no Telegram" onchange="toggleOpt(this)"><span class="opt-text">Receber no Telegram</span></label>
+        <label class="opt"><input type="checkbox" value="Receber por email" onchange="toggleOpt(this)"><span class="opt-text">Receber por email</span></label>
+        <label class="opt"><input type="checkbox" value="Acessar num painel ou tela" onchange="toggleOpt(this)"><span class="opt-text">Acessar num painel ou tela</span></label>
+        <label class="opt"><input type="checkbox" value="Acontecer automaticamente sem precisar pedir" onchange="toggleOpt(this)"><span class="opt-text">Acontecer automaticamente sem precisar pedir</span></label>
+        <label class="opt"><input type="checkbox" value="Perguntar e receber resposta na hora" onchange="toggleOpt(this)"><span class="opt-text">Perguntar e receber resposta na hora</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Quando funcionando, o que muda na sua rotina?</div>
+      <div class="options" id="p2c">
+        <label class="opt"><input type="checkbox" value="Sobro tempo para focar no que importa" onchange="toggleOpt(this)"><span class="opt-text">Sobro tempo para focar no que importa</span></label>
+        <label class="opt"><input type="checkbox" value="Equipe para de me interromper" onchange="toggleOpt(this)"><span class="opt-text">Minha equipe para de me interromper com perguntas</span></label>
+        <label class="opt"><input type="checkbox" value="Paro de perder informações e oportunidades" onchange="toggleOpt(this)"><span class="opt-text">Paro de perder informações e oportunidades</span></label>
+        <label class="opt"><input type="checkbox" value="Tomo decisões mais rápido e com segurança" onchange="toggleOpt(this)"><span class="opt-text">Tomo decisões mais rápido e com segurança</span></label>
+        <label class="opt"><input type="checkbox" value="Escalo sem contratar mais pessoas" onchange="toggleOpt(this)"><span class="opt-text">Escalo sem precisar contratar mais pessoas</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Se funcionasse perfeitamente, o que ele faria? <span class="optional">opcional</span></div>
+      <textarea id="p2livre" placeholder="Ex: Acordaria com um resumo do que aconteceu, responderia clientes sozinho e me avisaria só quando precisasse de mim..."></textarea>
+    </div>
+
+    <div class="nav">
+      <button class="btn-back" onclick="goTo(1)">‹</button>
+      <button class="btn-primary" onclick="goTo(3)">Próximo ›</button>
+    </div>
+  </div>
+
+  <!-- STEP 3: TIPO -->
+  <div class="step" id="step-3">
+    <div class="step-eyebrow">Passo 3 de 6 — Como vai funcionar</div>
+    <div class="step-title">Me conta como imagina esse sistema</div>
+    <div class="step-desc">Escolha uma opção por pergunta. Isso nos ajuda a definir o melhor tipo de sistema para você.</div>
+
+    <div class="card">
+      <div class="card-label">Você vai pedir para agir ou ele deve agir sozinho?</div>
+      <div class="options" id="p3a">
+        <label class="opt"><input type="radio" name="acao" value="age_quando_pedido" onchange="toggleOpt(this)"><span class="opt-text">Vou pedir e receber a resposta na hora</span></label>
+        <label class="opt"><input type="radio" name="acao" value="age_sozinho" onchange="toggleOpt(this)"><span class="opt-text">Quero que aja sozinho em horários definidos</span></label>
+        <label class="opt"><input type="radio" name="acao" value="age_ambos" onchange="toggleOpt(this)"><span class="opt-text">Os dois — quero pedir E que aja sozinho</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Precisa lembrar do que foi conversado antes?</div>
+      <div class="options" id="p3b">
+        <label class="opt"><input type="radio" name="memoria" value="sem_memoria" onchange="toggleOpt(this)"><span class="opt-text">Não — cada uso é independente</span></label>
+        <label class="opt"><input type="radio" name="memoria" value="com_memoria" onchange="toggleOpt(this)"><span class="opt-text">Sim — precisa lembrar do histórico e preferências</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">O sistema vai rodar quanto tempo por dia?</div>
+      <div class="options" id="p3c">
+        <label class="opt"><input type="radio" name="tempo_uso" value="sob_demanda" onchange="toggleOpt(this)"><span class="opt-text">Só quando eu usar (minutos por dia)</span></label>
+        <label class="opt"><input type="radio" name="tempo_uso" value="algumas_horas" onchange="toggleOpt(this)"><span class="opt-text">Algumas horas por dia</span></label>
+        <label class="opt"><input type="radio" name="tempo_uso" value="sempre_ligado" onchange="toggleOpt(this)"><span class="opt-text">24 horas por dia, 7 dias por semana</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Vai ter mais de uma pessoa usando?</div>
+      <div class="options" id="p3d">
+        <label class="opt"><input type="radio" name="usuarios" value="so_eu" onchange="toggleOpt(this)"><span class="opt-text">Só eu</span></label>
+        <label class="opt"><input type="radio" name="usuarios" value="equipe_pequena" onchange="toggleOpt(this)"><span class="opt-text">Eu e minha equipe (até 5 pessoas)</span></label>
+        <label class="opt"><input type="radio" name="usuarios" value="muitos_usuarios" onchange="toggleOpt(this)"><span class="opt-text">Muitos usuários (clientes, público externo)</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Precisa de uma tela ou painel para acessar?</div>
+      <div class="options" id="p3e">
+        <label class="opt"><input type="radio" name="interface" value="sem_interface" onchange="toggleOpt(this)"><span class="opt-text">Não — conversa por mensagem já basta</span></label>
+        <label class="opt"><input type="radio" name="interface" value="com_interface" onchange="toggleOpt(this)"><span class="opt-text">Sim — preciso de uma tela ou painel visual</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Algo mais sobre como imagina o sistema? <span class="optional">opcional</span></div>
+      <textarea id="p3livre" placeholder="Ex: Quero que funcione no celular, que seja simples de usar, que não precise de treinamento..."></textarea>
+    </div>
+
+    <div class="nav">
+      <button class="btn-back" onclick="goTo(2)">‹</button>
+      <button class="btn-primary" onclick="goTo(4)">Próximo ›</button>
+    </div>
+  </div>
+
+  <!-- STEP 4: FUNCIONALIDADES -->
+  <div class="step" id="step-4">
+    <div class="step-eyebrow">Passo 4 de 6 — Funcionalidades</div>
+    <div class="step-title">O que o sistema vai precisar fazer?</div>
+    <div class="step-desc">Marque tudo que se aplica ao seu projeto.</div>
+
+    <div class="card">
+      <div class="options" id="p4a">
+        <label class="opt"><input type="checkbox" value="Pesquisar informações na internet" onchange="toggleOpt(this)"><span class="opt-text">Buscar informações atualizadas na internet</span></label>
+        <label class="opt"><input type="checkbox" value="Conectar com ferramentas que já uso" onchange="toggleOpt(this)"><span class="opt-text">Se conectar com ferramentas que já uso (WhatsApp, email, planilhas...)</span></label>
+        <label class="opt"><input type="checkbox" value="Gerar relatórios e resumos automáticos" onchange="toggleOpt(this)"><span class="opt-text">Gerar relatórios e resumos sem eu precisar pedir</span></label>
+        <label class="opt"><input type="checkbox" value="Ler e processar arquivos (PDFs, planilhas, documentos)" onchange="toggleOpt(this)"><span class="opt-text">Ler e processar arquivos (PDFs, planilhas, documentos)</span></label>
+        <label class="opt"><input type="checkbox" value="Guardar e organizar informações ao longo do tempo" onchange="toggleOpt(this)"><span class="opt-text">Guardar e organizar informações ao longo do tempo</span></label>
+        <label class="opt"><input type="checkbox" value="Alertar sobre eventos importantes" onchange="toggleOpt(this)"><span class="opt-text">Me alertar quando algo importante acontecer</span></label>
+        <label class="opt"><input type="checkbox" value="Postar e monitorar redes sociais" onchange="toggleOpt(this)"><span class="opt-text">Postar ou monitorar redes sociais (Instagram, YouTube, TikTok...)</span></label>
+        <label class="opt"><input type="checkbox" value="Monitorar menções da marca online" onchange="toggleOpt(this)"><span class="opt-text">Monitorar o que falam da minha marca online</span></label>
+        <label class="opt"><input type="checkbox" value="Criar conteúdo pronto para publicar" onchange="toggleOpt(this)"><span class="opt-text">Criar conteúdo pronto para publicar nas redes sociais</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Alguma funcionalidade específica que imagina? <span class="optional">opcional</span></div>
+      <textarea id="p4livre" placeholder="Ex: Quero que ele responda mensagens no Instagram automaticamente quando eu não estou disponível..."></textarea>
+    </div>
+
+    <div class="nav">
+      <button class="btn-back" onclick="goTo(3)">‹</button>
+      <button class="btn-primary" onclick="goTo(5)">Próximo ›</button>
+    </div>
+  </div>
+
+  <!-- STEP 5: PERSONA -->
+  <div class="step" id="step-5">
+    <div class="step-eyebrow">Passo 5 de 6 — Pessoas</div>
+    <div class="step-title">Quem vai usar esse sistema?</div>
+    <div class="step-desc">Nos conte sobre quem vai se beneficiar com esse projeto.</div>
+
+    <div class="card">
+      <div class="card-label">Para quem é esse sistema?</div>
+      <div class="options" id="p5a">
+        <label class="opt"><input type="radio" name="para_quem" value="para_mim" onchange="toggleOpt(this)"><span class="opt-text">Para mim mesmo — resolve meu próprio problema</span></label>
+        <label class="opt"><input type="radio" name="para_quem" value="para_clientes" onchange="toggleOpt(this)"><span class="opt-text">Para meus clientes — pessoas que compram ou contratam meus serviços</span></label>
+        <label class="opt"><input type="radio" name="para_quem" value="para_equipe" onchange="toggleOpt(this)"><span class="opt-text">Para minha equipe — funcionários ou parceiros</span></label>
+        <label class="opt"><input type="radio" name="para_quem" value="para_publico" onchange="toggleOpt(this)"><span class="opt-text">Para o público geral — qualquer pessoa pode usar</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">O maior desejo de quem vai usar é?</div>
+      <div class="options" id="p5b">
+        <label class="opt"><input type="checkbox" value="Economizar tempo" onchange="toggleOpt(this)"><span class="opt-text">Economizar tempo</span></label>
+        <label class="opt"><input type="checkbox" value="Economizar dinheiro" onchange="toggleOpt(this)"><span class="opt-text">Economizar dinheiro</span></label>
+        <label class="opt"><input type="checkbox" value="Organizar melhor as informações" onchange="toggleOpt(this)"><span class="opt-text">Organizar melhor as informações</span></label>
+        <label class="opt"><input type="checkbox" value="Vender mais ou atrair mais clientes" onchange="toggleOpt(this)"><span class="opt-text">Vender mais ou atrair mais clientes</span></label>
+        <label class="opt"><input type="checkbox" value="Aprender algo novo" onchange="toggleOpt(this)"><span class="opt-text">Aprender algo novo</span></label>
+        <label class="opt"><input type="checkbox" value="Resolver um problema específico do trabalho" onchange="toggleOpt(this)"><span class="opt-text">Resolver um problema específico do trabalho</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">O que sente quando o problema não é resolvido?</div>
+      <div class="options" id="p5c">
+        <label class="opt"><input type="checkbox" value="Frustração e estresse" onchange="toggleOpt(this)"><span class="opt-text">Frustração e estresse</span></label>
+        <label class="opt"><input type="checkbox" value="Perda de dinheiro" onchange="toggleOpt(this)"><span class="opt-text">Perda de dinheiro</span></label>
+        <label class="opt"><input type="checkbox" value="Sensação de estar perdendo oportunidades" onchange="toggleOpt(this)"><span class="opt-text">Sensação de estar perdendo oportunidades</span></label>
+        <label class="opt"><input type="checkbox" value="Sobrecarga de trabalho" onchange="toggleOpt(this)"><span class="opt-text">Sobrecarga de trabalho</span></label>
+        <label class="opt"><input type="checkbox" value="Falta de controle sobre o negócio" onchange="toggleOpt(this)"><span class="opt-text">Falta de controle sobre o negócio</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Quem vai usar tem familiaridade com tecnologia?</div>
+      <div class="options" id="p5d">
+        <label class="opt"><input type="radio" name="tech" value="alta_familiaridade" onchange="toggleOpt(this)"><span class="opt-text">Sim — usam ferramentas digitais no dia a dia</span></label>
+        <label class="opt"><input type="radio" name="tech" value="media_familiaridade" onchange="toggleOpt(this)"><span class="opt-text">Mais ou menos — usam o básico (WhatsApp, email)</span></label>
+        <label class="opt"><input type="radio" name="tech" value="baixa_familiaridade" onchange="toggleOpt(this)"><span class="opt-text">Não — precisam de algo muito simples e intuitivo</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Vão usar em qual dispositivo?</div>
+      <div class="options" id="p5e">
+        <label class="opt"><input type="checkbox" value="celular" onchange="toggleOpt(this)"><span class="opt-text">Celular</span></label>
+        <label class="opt"><input type="checkbox" value="computador" onchange="toggleOpt(this)"><span class="opt-text">Computador</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Precisam de acessos diferentes?</div>
+      <div class="options" id="p5f">
+        <label class="opt"><input type="radio" name="acesso" value="mesmo_acesso" onchange="toggleOpt(this)"><span class="opt-text">Não — todo mundo vê e faz a mesma coisa</span></label>
+        <label class="opt"><input type="radio" name="acesso" value="acesso_basico" onchange="toggleOpt(this)"><span class="opt-text">Sim — tem quem só visualiza e quem pode editar</span></label>
+        <label class="opt"><input type="radio" name="acesso" value="acesso_completo" onchange="toggleOpt(this)"><span class="opt-text">Sim — administrador, equipe e cliente com acessos diferentes</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Quer descrever melhor quem vai usar? <span class="optional">opcional</span></div>
+      <textarea id="p5livre" placeholder="Ex: São donos de pequenos negócios, entre 30 e 50 anos, que usam WhatsApp mas não têm experiência com sistemas..."></textarea>
+    </div>
+
+    <div class="nav">
+      <button class="btn-back" onclick="goTo(4)">‹</button>
+      <button class="btn-primary" onclick="goTo(6)">Próximo ›</button>
+    </div>
+  </div>
+
+  <!-- STEP 6: REFERÊNCIAS -->
+  <div class="step" id="step-6">
+    <div class="step-eyebrow">Passo 6 de 6 — Referências</div>
+    <div class="step-title">Inspirações para o projeto</div>
+    <div class="step-desc">Última etapa! Isso nos ajuda a entender o estilo e a experiência que você busca.</div>
+
+    <div class="card">
+      <div class="card-label">Já usou algum sistema que te impressionou?</div>
+      <div class="options" id="p6a">
+        <label class="opt"><input type="radio" name="ref_uso" value="sim_parecido" onchange="toggleOpt(this)"><span class="opt-text">Sim — quero algo parecido</span></label>
+        <label class="opt"><input type="radio" name="ref_uso" value="sim_melhor" onchange="toggleOpt(this)"><span class="opt-text">Sim — mas quero algo melhor</span></label>
+        <label class="opt"><input type="radio" name="ref_uso" value="nao_nunca" onchange="toggleOpt(this)"><span class="opt-text">Não — nunca usei nada parecido</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Como quer que seu sistema seja percebido?</div>
+      <div class="options" id="p6b">
+        <label class="opt"><input type="checkbox" value="Simples e fácil de usar" onchange="toggleOpt(this)"><span class="opt-text">Simples e fácil — qualquer pessoa usa sem treinamento</span></label>
+        <label class="opt"><input type="checkbox" value="Profissional e confiável" onchange="toggleOpt(this)"><span class="opt-text">Profissional e confiável — passa segurança e credibilidade</span></label>
+        <label class="opt"><input type="checkbox" value="Moderno e inovador" onchange="toggleOpt(this)"><span class="opt-text">Moderno e inovador — surpreende quem usa</span></label>
+        <label class="opt"><input type="checkbox" value="Discreto e eficiente" onchange="toggleOpt(this)"><span class="opt-text">Discreto e eficiente — faz o trabalho sem aparecer</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Cite exemplos de sistemas ou apps que te inspiram <span class="optional">opcional</span></div>
+      <textarea id="p6livre" placeholder="Ex: Gosto do WhatsApp pela simplicidade, do Notion pela organização, do iFood pela experiência do usuário..."></textarea>
+    </div>
+
+    <div class="nav">
+      <button class="btn-back" onclick="goTo(5)">‹</button>
+      <button class="btn-primary green" onclick="gerarPRD()">✦ Gerar PRD</button>
+    </div>
+  </div>
+
+  <!-- STEP 7: OUTPUT -->
+  <div class="step" id="step-7">
+    <div class="success-icon">✦</div>
+    <div class="step-eyebrow" style="text-align:center">Concluído</div>
+    <div class="step-title" style="text-align:center">PRD gerado com sucesso!</div>
+    <div class="step-desc" style="text-align:center">Copie o documento abaixo e cole no Claude Code para começar a construção do seu projeto.</div>
+
+    <div class="output-section">
+      <div class="output-header">
+        <span>documento PRD.md</span>
+        <button class="copy-btn" onclick="copiar()">⧉ Copiar</button>
+      </div>
+      <div class="output-body">
+        <pre id="prd-output"></pre>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="nav">
+      <button class="btn-back" onclick="goTo(6)">‹ Voltar e editar</button>
+      <button class="btn-primary" onclick="novoFormulario()" style="background:var(--surface);color:var(--text);border:1px solid var(--border)">Novo projeto</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+var current = 0;
+var labels = ['Início','Problema','Solução','Como funciona','Funcionalidades','Pessoas','Referências','Concluído'];
+
+function goTo(n) {
+  document.getElementById('step-' + current).classList.remove('active');
+  document.getElementById('step-' + n).classList.add('active');
+  current = n;
+  var pct = Math.round((n / 7) * 100);
+  document.getElementById('progress').style.width = pct + '%';
+  document.getElementById('step-label-meta').textContent = labels[n] || '';
+  document.getElementById('step-counter').textContent = n > 0 && n < 7 ? (n) + ' / 6' : '';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function toggleOpt(el) {
+  var opt = el.closest('.opt');
+  if (el.type === 'radio') {
+    document.querySelectorAll('input[name="' + el.name + '"]').forEach(function(r) {
+      r.closest('.opt').classList.remove('sel');
+    });
+  }
+  if (el.checked) opt.classList.add('sel');
+  else opt.classList.remove('sel');
+}
+
+function getChecked(id) {
+  return Array.from(document.querySelectorAll('#' + id + ' input:checked')).map(function(i) { return i.value; });
+}
+
+function getRadio(name) {
+  var el = document.querySelector('input[name="' + name + '"]:checked');
+  return el ? el.value : '';
+}
+
+function decideTipo() {
+  var acao = getRadio('acao');
+  var memoria = getRadio('memoria');
+  var tempo = getRadio('tempo_uso');
+  var usuarios = getRadio('usuarios');
+  var iface = getRadio('interface');
+  var funcs = getChecked('p4a');
+  var temRedes = funcs.some(function(f) { return f.indexOf('redes') > -1 || f.indexOf('marca') > -1; });
+  var temMemoria = funcs.indexOf('Guardar e organizar informações ao longo do tempo') > -1;
+
+  if (usuarios === 'muitos_usuarios' || iface === 'com_interface') {
+    if (tempo === 'sempre_ligado' || (temMemoria && temRedes))
+      return { tipo: 'Tipo 6 — Sistema completo com Mission Control', just: 'Múltiplos usuários externos, interface visual e operação contínua exigem stack completa: OpenClaw + Supabase + Next.js' };
+    return { tipo: 'Tipo 5 — Agente OpenClaw + Supabase', just: 'Múltiplos usuários e interface visual requerem banco de dados estruturado e front-end' };
+  }
+  if (tempo === 'sempre_ligado' || (acao === 'age_ambos' && memoria === 'com_memoria'))
+    return { tipo: 'Tipo 4 — Agente OpenClaw (autônomo 24/7)', just: 'Opera continuamente, tem memória persistente e age de forma proativa — requer OpenClaw em VPS' };
+  if (memoria === 'com_memoria' || temMemoria)
+    return { tipo: 'Tipo 3 — Agente Claude Code com múltiplas skills', just: 'Memória persistente e processamento especializado sugerem agente com skills' };
+  if (acao === 'age_quando_pedido' && memoria === 'sem_memoria' && tempo === 'sob_demanda')
+    return { tipo: 'Tipo 1 — Skill standalone', just: 'Execução sob demanda, sem memória e sem autonomia — ideal como skill pontual' };
+  return { tipo: 'Tipo 2 — Agente Claude Code simples', just: 'Operação sob demanda com alguma autonomia — agente simples sem infraestrutura pesada' };
+}
+
+function decideStack(tipo) {
+  var s = ['Claude Code'];
+  if (tipo.indexOf('OpenClaw') > -1) s.push('OpenClaw', 'VPS Hostinger', 'Tailscale');
+  if (tipo.indexOf('Supabase') > -1) s.push('Supabase', 'PostgreSQL');
+  if (tipo.indexOf('Mission Control') > -1) s.push('Next.js', 'React', 'Tailwind CSS');
+  var funcs = getChecked('p4a');
+  if (funcs.indexOf('Pesquisar informações na internet') > -1) s.push('Brave Search MCP');
+  if (funcs.some(function(f) { return f.indexOf('redes') > -1 || f.indexOf('marca') > -1; })) s.push('Social MCP');
+  if (getChecked('p2b').indexOf('Receber no Telegram') > -1) s.push('Telegram Bot');
+  if (getChecked('p2b').indexOf('Receber por email') > -1) s.push('Email MCP');
+  s.push('GitHub');
+  return s;
+}
+
+function decideMilestones(tipo) {
+  var m = ['Fase 1 — MVP: funcionalidades essenciais funcionando'];
+  if (tipo.indexOf('OpenClaw') > -1) m.push('Fase 2 — Configurar OpenClaw na VPS e conectar ao Telegram');
+  if (tipo.indexOf('Supabase') > -1) m.push('Fase 3 — Integrar Supabase e implementar memória persistente');
+  if (tipo.indexOf('Mission Control') > -1) m.push('Fase 4 — Desenvolver interface visual (Mission Control)');
+  m.push('Fase final — Testes, refinamento e lançamento');
+  return m;
+}
+
+function decideModelos(tipo) {
+  if (tipo.indexOf('Tipo 1') > -1) return 'Execução da skill → Sonnet';
+  if (tipo.indexOf('Tipo 2') > -1) return 'Conversa → Sonnet | Tarefas complexas → Opus';
+  return 'Conversa → Sonnet | HeartBeats → Haiku | Planejamento → Opus';
+}
+
+function gerarPRD() {
+  var nome = document.getElementById('nome').value || 'Sem nome';
+  var p1 = [].concat(getChecked('p1a'), [getRadio('tempo')], getChecked('p1c')).filter(Boolean);
+  var p1l = document.getElementById('p1livre').value;
+  var p2a = getChecked('p2a'); var p2b = getChecked('p2b'); var p2c = getChecked('p2c');
+  var p2l = document.getElementById('p2livre').value;
+  var p3l = document.getElementById('p3livre').value;
+  var p4 = getChecked('p4a'); var p4l = document.getElementById('p4livre').value;
+  var p5b = getChecked('p5b'); var p5c = getChecked('p5c');
+  var p5e = getChecked('p5e'); var p5l = document.getElementById('p5livre').value;
+  var p6b = getChecked('p6b'); var p6l = document.getElementById('p6livre').value;
+
+  var paraQuemMap = { para_mim: 'Uso próprio', para_clientes: 'Clientes externos', para_equipe: 'Equipe interna', para_publico: 'Público geral' };
+  var techMap = { alta_familiaridade: 'Alta', media_familiaridade: 'Média (WhatsApp, email)', baixa_familiaridade: 'Baixa — interface muito simples' };
+  var acessoMap = { mesmo_acesso: 'Único nível', acesso_basico: 'Dois níveis (visualizador e editor)', acesso_completo: 'Três níveis (admin, equipe, cliente)' };
+
+  var arq = decideTipo();
+  var stack = decideStack(arq.tipo);
+  var milestones = decideMilestones(arq.tipo);
+  var modelos = decideModelos(arq.tipo);
+
+  var prd = '# PRD — ' + nome + '\n';
+  prd += '> Gerado via Formulário PRD | ' + new Date().toLocaleDateString('pt-BR') + '\n\n---\n\n';
+  prd += '## 1. Problema identificado\n';
+  prd += 'Situação atual: ' + (p1.join(', ') || 'não informado') + '.\n';
+  if (p1l) prd += '\n' + p1l + '\n';
+  prd += '\n---\n\n## 2. Solução proposta\n';
+  prd += 'O sistema deve: ' + (p2a.join(', ') || 'não informado') + '.\n';
+  prd += 'Entrega via: ' + (p2b.join(', ') || 'não informado') + '.\n';
+  prd += 'Resultado esperado: ' + (p2c.join(', ') || 'não informado') + '.\n';
+  if (p2l) prd += '\n' + p2l + '\n';
+  prd += '\n---\n\n## 3. Arquitetura do projeto\n';
+  prd += '**Tipo:** ' + arq.tipo + '\n\n**Justificativa:** ' + arq.just + '\n';
+  prd += '\n---\n\n## 4. Funcionalidades\n';
+  var funcsAll = p4.slice(); if (p4l) funcsAll.push(p4l);
+  prd += (funcsAll.length ? funcsAll.map(function(f) { return '- ' + f; }).join('\n') : '- não informado') + '\n';
+  prd += '\n---\n\n## 5. Persona e usuários\n';
+  prd += '**Para quem:** ' + (paraQuemMap[getRadio('para_quem')] || 'não informado') + '\n';
+  prd += '**Desejos:** ' + (p5b.join(', ') || 'não informado') + '\n';
+  prd += '**Dores:** ' + (p5c.join(', ') || 'não informado') + '\n';
+  prd += '**Familiaridade tecnológica:** ' + (techMap[getRadio('tech')] || 'não informado') + '\n';
+  prd += '**Dispositivos:** ' + (p5e.join(' e ') || 'não informado') + '\n';
+  prd += '**Níveis de acesso:** ' + (acessoMap[getRadio('acesso')] || 'não informado') + '\n';
+  if (p5l) prd += '\n' + p5l + '\n';
+  prd += '\n---\n\n## 6. Referências e inspirações\n';
+  prd += '**Como deve ser percebido:** ' + (p6b.join(', ') || 'não informado') + '\n';
+  if (p6l) prd += '\n' + p6l + '\n';
+  prd += '\n---\n\n## 7. Stack tecnológica *(gerado automaticamente)*\n';
+  prd += stack.map(function(s) { return '- ' + s; }).join('\n') + '\n';
+  prd += '\n---\n\n## 8. Modelo de IA por tarefa *(gerado automaticamente)*\n' + modelos + '\n';
+  prd += '\n---\n\n## 9. Milestones *(gerado automaticamente)*\n';
+  prd += milestones.map(function(m) { return '- ' + m; }).join('\n') + '\n';
+  prd += '\n---\n\n## Instrução para o Claude Code\n';
+  prd += 'Leia este PRD e a BASE_CONHECIMENTO.md em ~/Documents/claude/BASE_CONHECIMENTO.md.\n';
+  prd += 'Antes de começar:\n1. Liste todos os arquivos que vai criar com uma linha descrevendo cada um\n2. Aguarde confirmação\n3. Só então comece a construir\n\n';
+  prd += '**Tipo:** ' + arq.tipo;
+
+  document.getElementById('prd-output').textContent = prd;
+  goTo(7);
+}
+
+function copiar() {
+  var text = document.getElementById('prd-output').textContent;
+  navigator.clipboard.writeText(text).then(function() {
+    var btn = document.querySelector('.copy-btn');
+    btn.textContent = '✓ Copiado!';
+    setTimeout(function() { btn.textContent = '⧉ Copiar'; }, 2000);
+  });
+}
+
+function novoFormulario() {
+  document.querySelectorAll('input').forEach(function(i) { i.checked = false; });
+  document.querySelectorAll('.opt').forEach(function(o) { o.classList.remove('sel'); });
+  document.querySelectorAll('textarea').forEach(function(t) { t.value = ''; });
+  document.getElementById('nome').value = '';
+  goTo(0);
+}
+</script>
+</body>
+</html>
