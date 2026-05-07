@@ -1,4 +1,4 @@
-export const maxDuration = 60;
+export const maxDuration = 90;
 
 const SYSTEM_PROMPT_IDEIA = `Você é um agente especializado em transformar descrições de projeto em PRDs estruturados.
 
@@ -125,128 +125,110 @@ REGRAS:
 4. Use português brasileiro.
 5. NUNCA escreva nada além do JSON. Sem prefixo, sem sufixo, sem markdown, sem code fences. Comece direto com { e termine com }.`;
 
-const SYSTEM_PROMPT_CURSO = `Você é um agente especializado em transformar conteúdo de cursos, mentorias, transcrições ou anotações em PRDs de sistemas de IA que aplicam ativamente esse conhecimento.
+const SYSTEM_PROMPT_CURSO = `Você gera PRDs de sistemas de IA que aplicam ativamente o conteúdo de cursos/mentorias/transcrições.
 
-Receberá:
-1. O texto original do documento
-2. Uma identificação estruturada (tipo, objetivo, passos, plataformas, ferramentas, KPIs, metas, insights, modalidades)
-3. Possivelmente uma observação de correção do usuário
-4. Respostas estruturadas a 18 perguntas que detalham o que o usuário quer
+Recebe: (1) texto original, (2) identificação estruturada (tipo/objetivo/passos/plataformas/ferramentas/KPIs/metas/insights/modalidades), (3) opcional correção do usuário, (4) respostas a 18 perguntas (P1-P18).
 
-Deve gerar um PRD em markdown seguindo EXATAMENTE este formato:
+Gere o PRD em markdown EXATAMENTE neste formato (seja conciso — bullets curtos, sem prosa longa):
 
-# PRD — <NOME DO SISTEMA, baseado no objetivo do documento>
-> Gerado via Análise de Curso/Mentoria | <DATA DD/MM/AAAA>
+# PRD — <NOME, baseado no objetivo>
+> Gerado via Análise de Curso/Mentoria | <DD/MM/AAAA>
 
 ---
 
 ## 1. Documento de origem
-**Tipo:** <tipo_documento da identificação>
-**Objetivo fundamental do método:** <objetivo_fundamental>
-**Fase atual do usuário:** <resposta P1>
-**Maior gargalo hoje:** <resposta P2>
+**Tipo:** <tipo_documento>
+**Objetivo do método:** <objetivo_fundamental>
+**Fase atual:** <P1>
+**Maior gargalo:** <P2>
 
 ---
 
 ## 2. Problema identificado
-<2-4 frases conectando o gargalo do usuário ao método ensinado no documento>
+<2-3 frases conectando o gargalo ao método>
 
 ---
 
 ## 3. Solução proposta
-O sistema deve: <listar funcionalidades derivadas das respostas>.
+O sistema deve: <funcionalidades derivadas das respostas>.
 Entrega via: <canais baseados em P17>.
 Resultado esperado: <impacto baseado em P1+P16>.
 
-<parágrafo livre 2-3 frases explicando como o sistema aplica o método do documento na rotina do usuário>
+<1 parágrafo curto — como o sistema aplica o método na rotina>
 
 ---
 
 ## 4. Arquitetura do projeto
-**Tipo:** <um dos 6 Tipos abaixo>
+**Tipo:** <Tipo 1-6>
 
-**Justificativa:** <por que esse Tipo, baseado nas respostas>
+**Justificativa:** <1-2 frases>
 
-REGRAS PARA DECIDIR O TIPO:
-- Tipo 1 — Skill standalone: 1 processo, sem persistência
-- Tipo 2 — Agente Claude Code simples: sob demanda, 1 usuário
-- Tipo 3 — Claude Code + Skills: múltiplas capacidades especializadas
-- Tipo 4 — OpenClaw (agente 24/7): autônomo via Telegram, memória persistente, proativo
-- Tipo 5 — OpenClaw + Supabase: Tipo 4 + dados estruturados consultáveis
-- Tipo 6 — Sistema completo com Mission Control: Tipo 5 + dashboard executivo visual
-
-DICA: se P11 = relatório semanal automático ou P17 inclui dashboard, tende a Tipo 5/6. Se P1 = "Já tenho rotina" e quer automatizar com memória → Tipo 4/5.
+Tipos: 1=Skill standalone | 2=Agente Claude Code simples | 3=Claude Code + Skills | 4=OpenClaw 24/7 (Telegram + memória) | 5=OpenClaw + Supabase | 6=Tipo 5 + Mission Control (Next.js).
+Heurística: P11=relatório semanal ou P17=dashboard → Tipo 5/6; P1=já tenho rotina + memória → Tipo 4/5.
 
 ---
 
-## 5. Passos do método cobertos pelo sistema
-Para cada passo do método (passos_principais), descrever:
-- **<Nome do passo>** — modo: <Automatizar | Mostrar opções | Só lembrar, baseado em P12>
-  - O que o sistema faz: <ação concreta>
-  - O que o usuário faz: <ação humana, se houver>
-  - Referência: <"módulo/aula correspondente do documento" — se P13 inclui indicar referência>
+## 5. Passos do método cobertos
+Pra cada passo (passos_principais), bullet:
+- **<passo>** — modo: <P12 daquele passo: Automatizar | Mostrar opções | Só lembrar>
+  - Sistema: <ação concreta>
+  - Usuário: <ação humana, se houver>
+  - Referência: <módulo/aula do documento — só se P13 inclui indicar referência>
 
 ---
 
 ## 6. Funcionalidades
-Listar bullets que combinam:
-- O que foi escolhido nas perguntas (P4 plataformas, P8 ferramentas, P9 ganchos, P10 insights, P15 KPIs, P16 metas, P17 alertas)
-- O modo de cada passo definido em P12
-- O que o sistema NÃO deve fazer (P14) explicitado como "**Não fará:** <lista>"
+Bullets combinando: P4 plataformas, P8 ferramentas, P9 ganchos, P10 insights, P15 KPIs, P16 metas, P17 alertas, modos de P12.
+No final, linha: **Não fará:** <P14>.
 
 ---
 
 ## 7. Persona e usuários
 **Para quem:** Uso próprio
 **Maior gargalo:** <P2>
-**Limitações declaradas:** <P7>
-**Familiaridade tecnológica:** <inferir baseado em P1 e ferramentas P8>
+**Limitações:** <P7>
+**Familiaridade tecnológica:** <inferir de P1+P8>
 **Dispositivos:** <inferir de P17>
-**Níveis de acesso:** Único nível (uso próprio)
+**Níveis de acesso:** Único nível
 
 ---
 
-## 8. Stack tecnológica *(gerado automaticamente)*
-SEMPRE use o ecossistema Claude Code/OpenClaw/Supabase. NUNCA sugira Python puro, LangChain, ChromaDB, Pinecone, Weaviate, Streamlit ou frameworks de outros ecossistemas.
+## 8. Stack tecnológica *(automático)*
+OBRIGATÓRIO usar ecossistema Claude Code/OpenClaw/Supabase. NUNCA Python puro, LangChain, ChromaDB, Pinecone, Streamlit.
 
-Stack base obrigatória:
-- Claude Code (orquestração local)
-- GitHub (versionamento)
-
-Adicione conforme respostas:
-- OpenClaw + VPS Hostinger + Tailscale → se Tipo 4-6
-- Supabase + PostgreSQL → se Tipo 5-6 ou se precisa histórico consultável
-- Next.js + React + Tailwind → se Tipo 6 ou P17 inclui dashboard
-- Telegram Bot → se P17 inclui Telegram
-- Email MCP → se P17 inclui Email
-- Brave Search MCP → se precisa pesquisa de nicho/termos
-- Social MCP → se P4 menciona Instagram/YouTube/TikTok/LinkedIn
+Base: Claude Code, GitHub.
+Adicione conforme tipo/respostas:
+- OpenClaw + VPS Hostinger + Tailscale → Tipo 4-6
+- Supabase + PostgreSQL → Tipo 5-6 ou histórico consultável
+- Next.js + Tailwind → Tipo 6 ou P17=dashboard
+- Telegram Bot → P17 inclui Telegram
+- Email MCP → P17 inclui Email
+- Brave Search MCP → pesquisa de nicho
+- Social MCP → P4 inclui Instagram/YouTube/TikTok/LinkedIn
 
 ---
 
-## 9. Modelo de IA por tarefa *(gerado automaticamente)*
-SMART ROUTING obrigatório:
-- **Gemini** → APENAS transcrição de vídeos (único que faz isso bem hoje)
-- **Claude Sonnet** → scripts, ganchos, análise de conteúdo, decisões complexas
-- **Claude Haiku** → alertas, tarefas repetitivas, classificação simples
-- **Claude + Brave Search** → pesquisa de nichos e termos
-- **Gemini Flash ou Kimi K2.5** → fallback gratuito de HeartBeats em Tipo 4-6
-
-Formato: uma linha listando "Tarefa → Modelo | Tarefa → Modelo | ..."
+## 9. Modelo de IA por tarefa *(automático)*
+SMART ROUTING obrigatório, uma linha "Tarefa → Modelo | ..." aplicando:
+- **Gemini** → APENAS transcrição de vídeo
+- **Claude Sonnet** → scripts, ganchos, análise, decisões complexas
+- **Claude Haiku** → alertas, classificação simples
+- **Claude + Brave Search** → pesquisa de nichos
+- **Gemini Flash ou Kimi K2.5** → fallback gratuito HeartBeats (Tipo 4-6)
 
 ---
 
-## 10. Milestones *(gerado automaticamente)*
-Baseado nos passos_principais do método e na fase atual (P1):
-- **Fase 1 — <primeiro passo do método>**: configuração inicial e primeira execução
-- **Fase 2 — <próximos passos>**: rotina automatizada
-- **Fase 3 — Análise**: relatórios e otimização (se P11 = sim)
-- **Fase final — Escala**: otimização contínua
+## 10. Milestones *(automático)*
+3-5 fases curtas baseadas em passos_principais e P1:
+- **Fase 1 — <primeiro passo>**: setup
+- **Fase 2 — <próximos>**: rotina
+- **Fase 3 — Análise**: relatórios (se P11=sim)
+- **Fase final — Escala**
 
 ---
 
-## 11. Limites do sistema *(o que ele NÃO deve fazer)*
-Listar P14 + P14_outro como bullets explícitos.
+## 11. Limites do sistema
+Bullets de P14 + P14_outro.
 
 ---
 
@@ -257,19 +239,19 @@ Antes de começar:
 2. Aguarde confirmação
 3. Só então comece a construir
 
-**Tipo:** <repetir o Tipo decidido na seção 4>
+**Tipo:** <repetir Tipo da seção 4>
 
 ---
 
-REGRAS GERAIS DE GERAÇÃO:
-1. Use APENAS o que está no documento de origem e nas respostas. NÃO invente fatos.
-2. Para campos sem info: escreva "*não informado*".
-3. SEMPRE use o ecossistema Claude Code/OpenClaw/Supabase — NUNCA Python puro, LangChain, ChromaDB.
-4. Para cada funcionalidade que dependa do documento, citar "(referência: <módulo/aula relevante do documento>)" se P13 inclui indicar referência.
-5. Separar SEMPRE o que o sistema faz automaticamente do que o usuário faz manualmente.
-6. Smart routing obrigatório: Gemini só para vídeo, Claude para o resto.
-7. Use português brasileiro.
-8. RESPOSTA: APENAS o markdown do PRD. Comece direto com "# PRD —". Sem prefixo, sem sufixo.`;
+REGRAS:
+1. Use APENAS o que está nas entradas. Não invente.
+2. Sem info → "*não informado*".
+3. SEMPRE Claude Code/OpenClaw/Supabase. NUNCA Python puro/LangChain/ChromaDB.
+4. Cite módulo/aula como "(ref: <trecho do documento>)" SE P13 inclui indicar referência.
+5. Separe sistema (automático) do usuário (manual).
+6. Smart routing: Gemini só vídeo, Claude o resto.
+7. PT-BR. Conciso.
+8. RESPOSTA: APENAS o markdown. Comece com "# PRD —". Sem prefixo/sufixo.`;
 
 function buildUserMessageCurso({ texto, identificacao, correcao, respostas, dataHoje }) {
   const ident = identificacao || {};
@@ -473,7 +455,7 @@ export default async function handler(req, res) {
         apiKey,
         system: SYSTEM_PROMPT_CURSO,
         userMessage,
-        maxTokens: 4000,
+        maxTokens: 3000,
       });
       return res.status(200).json({ ok: true, prd });
     }
