@@ -687,12 +687,13 @@
     <div class="step-desc">Sobre ganchos, insights do curso e análise de padrões.</div>
 
     <div class="card">
-      <div class="card-label">Como quer que o sistema te ajude com ganchos?</div>
+      <div class="card-label">Como quer que o sistema te ajude com ganchos? (pode marcar mais de uma)</div>
       <div class="options">
-        <label class="opt"><input type="radio" name="c2-p9" value="Gerar 3 opções automaticamente para cada execução" onchange="toggleOpt(this)"><span class="opt-text">Gerar 3 opções automaticamente para cada execução</span></label>
-        <label class="opt"><input type="radio" name="c2-p9" value="Manter biblioteca de ganchos validados do meu nicho" onchange="toggleOpt(this)"><span class="opt-text">Manter biblioteca de ganchos validados do meu nicho</span></label>
-        <label class="opt"><input type="radio" name="c2-p9" value="Me alertar quando não tiver gancho definido" onchange="toggleOpt(this)"><span class="opt-text">Me alertar quando não tiver gancho definido</span></label>
-        <label class="opt"><input type="radio" name="c2-p9" value="Analisar quais ganchos performam melhor nos meus resultados" onchange="toggleOpt(this)"><span class="opt-text">Analisar quais ganchos performam melhor nos meus resultados</span></label>
+        <label class="opt"><input type="checkbox" name="c2-p9" value="Gerar 3 opções automaticamente para cada execução" onchange="toggleOpt(this)"><span class="opt-text">Gerar 3 opções automaticamente para cada execução</span></label>
+        <label class="opt"><input type="checkbox" name="c2-p9" value="Criar mais de 3 opções de gancho por vídeo para aumentar minha performance" onchange="toggleOpt(this)"><span class="opt-text">Criar mais de 3 opções de gancho por vídeo para aumentar minha performance</span></label>
+        <label class="opt"><input type="checkbox" name="c2-p9" value="Manter biblioteca de ganchos validados do meu nicho" onchange="toggleOpt(this)"><span class="opt-text">Manter biblioteca de ganchos validados do meu nicho</span></label>
+        <label class="opt"><input type="checkbox" name="c2-p9" value="Me alertar quando não tiver gancho definido" onchange="toggleOpt(this)"><span class="opt-text">Me alertar quando não tiver gancho definido</span></label>
+        <label class="opt"><input type="checkbox" name="c2-p9" value="Analisar quais ganchos performam melhor nos meus resultados" onchange="toggleOpt(this)"><span class="opt-text">Analisar quais ganchos performam melhor nos meus resultados</span></label>
       </div>
     </div>
 
@@ -1577,8 +1578,8 @@ function renderBlocoCurso(bloco) {
   var emptyHint = function(msg) { return '<div class="empty-hint">' + msg + '</div>'; };
 
   if (bloco === 'c2-b1') {
-    var html = passos.map(function(p) { return optHTML(p, p, 'radio', 'c2-p2'); }).join('');
-    html += optHTML('Tudo — preciso de ajuda em todas as etapas', 'Tudo — preciso de ajuda em todas as etapas', 'radio', 'c2-p2');
+    var html = passos.map(function(p) { return optHTML(p, p, 'checkbox', ''); }).join('');
+    html += optHTML('Tudo — preciso de ajuda em todas as etapas', 'Tudo — preciso de ajuda em todas as etapas', 'checkbox', '');
     document.getElementById('c2-p2').innerHTML = html;
   } else if (bloco === 'c2-b2') {
     var plat = ident.plataformas_mencionadas || [];
@@ -1588,7 +1589,7 @@ function renderBlocoCurso(bloco) {
   } else if (bloco === 'c2-b3') {
     var mod = ident.modalidades_execucao || [];
     document.getElementById('c2-p6').innerHTML = mod.length
-      ? mod.map(function(p) { return optHTML(p, p, 'radio', 'c2-p6'); }).join('')
+      ? mod.map(function(p) { return optHTML(p, p, 'checkbox', ''); }).join('')
       : emptyHint('Nenhuma modalidade específica identificada no documento.');
     var ferr = ident.ferramentas_mencionadas || [];
     document.getElementById('c2-p8').innerHTML = ferr.length
@@ -1635,16 +1636,16 @@ function coletarRespostasCurso() {
   });
   return {
     p1_fase: getRadio('c2-p1'),
-    p2_gargalo: getRadio('c2-p2'),
+    p2_gargalo: getChecked('c2-p2'),
     p3_primeiro_passo: getRadio('c2-p3'),
     p4_plataformas: getChecked('c2-p4'),
     p4_plataformas_outras: (document.getElementById('c2-p4-livre').value || '').trim(),
     p5_configuracao: getRadio('c2-p5'),
-    p6_modalidade: getRadio('c2-p6'),
+    p6_modalidade: getChecked('c2-p6'),
     p7_limitacoes: getCheckedByName('c2-p7'),
     p8_ferramentas: getChecked('c2-p8'),
     p8_ferramentas_outras: (document.getElementById('c2-p8-livre').value || '').trim(),
-    p9_ganchos: getRadio('c2-p9'),
+    p9_ganchos: getCheckedByName('c2-p9'),
     p10_insights: getChecked('c2-p10'),
     p11_padroes: getRadio('c2-p11'),
     p12_modos_por_passo: p12,

@@ -277,14 +277,14 @@ function buildUserMessageCurso({ texto, identificacao, correcao, respostas, data
   lines.push('');
   lines.push('=== RESPOSTAS DO USUÁRIO (18 perguntas) ===');
   lines.push(`P1 (fase atual): ${r.p1_fase || '(não respondido)'}`);
-  lines.push(`P2 (maior gargalo): ${r.p2_gargalo || '(não respondido)'}`);
+  lines.push(`P2 (maiores gargalos): ${(r.p2_gargalo || []).join(' | ') || '(nenhum)'}`);
   lines.push(`P3 (executou primeiro passo?): ${r.p3_primeiro_passo || '(não respondido)'}`);
   lines.push(`P4 (plataformas escolhidas): ${[...(r.p4_plataformas || []), ...(r.p4_plataformas_outras ? [r.p4_plataformas_outras + ' (livre)'] : [])].join(', ') || '(nenhuma)'}`);
   lines.push(`P5 (configuração das plataformas): ${r.p5_configuracao || '(não respondido)'}`);
-  lines.push(`P6 (modalidade priorizada): ${r.p6_modalidade || '(não respondido)'}`);
+  lines.push(`P6 (modalidades priorizadas): ${(r.p6_modalidade || []).join(' | ') || '(nenhuma)'}`);
   lines.push(`P7 (limitações): ${(r.p7_limitacoes || []).join(', ') || '(nenhuma)'}`);
   lines.push(`P8 (ferramentas que já usa): ${[...(r.p8_ferramentas || []), ...(r.p8_ferramentas_outras ? [r.p8_ferramentas_outras + ' (livre)'] : [])].join(', ') || '(nenhuma)'}`);
-  lines.push(`P9 (ganchos): ${r.p9_ganchos || '(não respondido)'}`);
+  lines.push(`P9 (ganchos): ${(r.p9_ganchos || []).join(' | ') || '(nenhum)'}`);
   lines.push(`P10 (insights ativos): ${(r.p10_insights || []).join(' | ') || '(nenhum)'}`);
   lines.push(`P11 (análise de padrões): ${r.p11_padroes || '(não respondido)'}`);
   const p12 = r.p12_modos_por_passo || {};
