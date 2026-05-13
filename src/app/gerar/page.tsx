@@ -48,10 +48,19 @@ export default function GerarPage() {
     }
 
     async function gerarPRD() {
-      const res = await fetch('/api/gerar-prd', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ rascunho, arquitetura }),
+      // Usa a VPS quando NEXT_PUBLIC_GERAR_PRD_URL estiver definida (produção).
+      // Cai para a rota Vercel local como fallback (dev / VPS indisponível).
+      const vpsUrl = process.env.NEXT_PUBLIC_GERAR_PRD_URL
+      const token  = process.env.NEXT_PUBLIC_GERAR_PRD_TOKEN
+      const url    = vpsUrl ? `${vpsUrl}/gerar-prd` : '/api/gerar-prd'
+
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (vpsUrl && token) headers['Authorization'] = `Bearer ${token}`
+
+      const res = await fetch(url, {
+        method: 'POST',
+        headers,
+        body:   JSON.stringify({ rascunho, arquitetura }),
       })
 
       // Erros HTTP antes do stream (400 de validação, etc.)
