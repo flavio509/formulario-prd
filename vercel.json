@@ -1,7 +1,8 @@
 {
   "functions": {
-    "api/gerar-prd.js": {
-      "maxDuration": 60
-    }
+    "src/app/api/extrair-documento/route.ts": { "maxDuration": 60 },
+    "src/app/api/transcrever-audio/route.ts": { "maxDuration": 60 },
+    "src/app/api/arquiteto/route.ts":          { "maxDuration": 60 },
+    "src/app/api/gerar-prd/route.ts":          { "maxDuration": 60 }
   }
 }
