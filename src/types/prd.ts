@@ -100,6 +100,7 @@ export const SESSION_KEYS = {
   RASCUNHO:     'prd-rascunho',
   ARQUITETURA:  'prd-arquitetura',
   STATUS:       'prd-status',
+  RESULTADO:    'prd-resultado',
 } as const
 
 export type PrdStatus =
