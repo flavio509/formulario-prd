@@ -65,14 +65,13 @@ export default function GerarPage() {
         // Trata erros HTTP antes de tentar JSON.parse —
         // evita "Unexpected token" quando Vercel retorna HTML/texto em 504/524.
         if (!res.ok) {
+          // Lê o body UMA só vez como texto — stream não pode ser consumido duas vezes.
+          // Se for JSON estruturado ({ error: "..." }) extrai a mensagem; caso contrário
+          // usa o texto bruto (ex: HTML de timeout do Vercel), truncado para exibição.
+          const texto = await res.text()
           let mensagem = `Erro HTTP ${res.status}`
-          try {
-            const errData = await res.json() as { error?: string }
-            mensagem = errData.error ?? mensagem
-          } catch {
-            const texto = await res.text()
-            mensagem = texto.slice(0, 300) || mensagem
-          }
+          try { mensagem = (JSON.parse(texto) as { error?: string }).error ?? mensagem } catch {}
+          if (mensagem === `Erro HTTP ${res.status}`) mensagem = texto.slice(0, 300) || mensagem
           throw new Error(mensagem)
         }
 
