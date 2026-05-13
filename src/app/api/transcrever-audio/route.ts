@@ -1,38 +1,76 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { put, del } from '@vercel/blob'
-import { jsonrepair } from 'jsonrepair'
 import { getOpenAIClient }    from '@/lib/openai'
 import { getAnthropicClient } from '@/lib/anthropic'
+import { parseFields, toList } from '@/lib/parse-fields'
 import type { RascunhoPRD } from '@/types/prd'
 
 export const maxDuration = 60
 
 const TIPOS_ACEITOS = ['audio/mpeg', 'audio/mp4', 'audio/wav', 'audio/x-m4a', 'audio/m4a', 'audio/aac', 'audio/webm']
 
-// ─── Prompt do sistema (escaping explícito) ───────────────────────────────────
+// ─── Prompt do sistema ────────────────────────────────────────────────────────
 
 const SISTEMA = `Você é um especialista em análise de negócios e arquitetura de sistemas.
-Responda SOMENTE com JSON válido e bem formado, sem markdown, sem texto antes ou depois.
-REGRAS CRÍTICAS DE FORMATAÇÃO:
-1. Todos os campos de texto devem estar em uma única linha lógica.
-2. Para quebras de parágrafo dentro de strings, use a sequência de escape \\n (barra-n).
-3. Aspas dentro de strings devem ser escapadas como \\".
-4. Nunca inclua caracteres de controle literais dentro de strings JSON.
-5. Arrays devem ter vírgula apenas entre elementos — sem vírgula após o último.`
+Responda SOMENTE usando o formato de campos delimitados especificado.
+Não use JSON, markdown, blocos de código ou qualquer outra formatação.
+Cada campo deve estar entre ===FIELD: nome=== e ===END===.
+Para campos de lista: um item por linha, sem marcadores, sem numeração.
+Não inclua nenhum texto fora dos delimitadores.`
 
-const SCHEMA_JSON = `Retorne exatamente este JSON (sem chaves extras, sem markdown):
-{
-  "titulo": "Nome sugestivo para o projeto (3-6 palavras, específico para o negócio)",
-  "problema": "Descrição em 2-3 parágrafos separados por \\n\\n. Específico ao negócio.",
-  "solucao_proposta": "O SISTEMA DE SOFTWARE que será construído para resolver o problema. Descreva as automações, integrações e funcionalidades do sistema — NÃO transcreva ou resuma a fala. 2-3 parágrafos separados por \\n\\n.",
-  "funcionalidades_principais": ["funcionalidade 1", "funcionalidade 2"],
-  "o_que_sistema_faz": ["tarefa automatizada 1", "tarefa automatizada 2"],
-  "o_que_usuario_faz": ["tarefa humana 1", "tarefa humana 2"],
-  "restricoes": ["restricao 1", "restricao 2"],
-  "usuarios": "OBRIGATÓRIO. Perfil de quem usará o sistema (ex: gerentes de loja, atendentes), frequência de uso e principal dor emocional que o sistema resolve. Infira pelo contexto se não estiver explícito. Nunca deixe em branco.",
-  "metricas_sucesso": ["OBRIGATÓRIO — gere 3-5 métricas mensuráveis mesmo que a fala não as cite. Ex: redução de tempo, taxa de adoção, redução de erros, NPS, ROI."],
-  "notas_adicionais": "Observações relevantes separadas por \\n se necessário. [Fonte: áudio transcrito]"
-}`
+// ─── Schema de saída (delimitadores) ─────────────────────────────────────────
+
+const SCHEMA_CAMPOS = `Retorne EXATAMENTE nesta estrutura, sem nenhum texto fora dos delimitadores:
+
+===FIELD: titulo===
+[Nome sugestivo para o projeto — 3-6 palavras, específico para o negócio]
+===END===
+===FIELD: problema===
+[Descrição do problema em 2-3 parágrafos. Texto livre, pode ter múltiplas linhas.]
+===END===
+===FIELD: solucao_proposta===
+[O SISTEMA DE SOFTWARE que será construído para resolver o problema. Descreva as automações, integrações e funcionalidades do sistema — NÃO transcreva ou resuma a fala. 2-3 parágrafos.]
+===END===
+===FIELD: funcionalidades_principais===
+[lista — uma funcionalidade por linha, sem marcadores]
+===END===
+===FIELD: o_que_sistema_faz===
+[lista — uma tarefa automatizada por linha, sem marcadores]
+===END===
+===FIELD: o_que_usuario_faz===
+[lista — uma tarefa humana por linha, sem marcadores]
+===END===
+===FIELD: restricoes===
+[lista — uma restrição por linha, sem marcadores]
+===END===
+===FIELD: usuarios===
+[OBRIGATÓRIO. Perfil de quem usará o sistema, frequência de uso e principal dor emocional que o sistema resolve. Infira pelo contexto se não estiver explícito. Nunca deixe em branco.]
+===END===
+===FIELD: metricas_sucesso===
+[OBRIGATÓRIO. 3-5 métricas mensuráveis, uma por linha, sem marcadores. Ex: Redução de 50% no tempo de processamento. Gere mesmo que a fala não as cite.]
+===END===
+===FIELD: notas_adicionais===
+[Observações relevantes. Pode ter múltiplas linhas. Inclua: Fonte: áudio transcrito.]
+===END===`
+
+// ─── Parser: campos → RascunhoPRD ─────────────────────────────────────────────
+
+function parseCamposRascunho(campos: Record<string, string>): RascunhoPRD {
+  return {
+    titulo:                    campos.titulo                    ?? '',
+    problema:                  campos.problema                  ?? '',
+    solucao_proposta:          campos.solucao_proposta          ?? '',
+    funcionalidades_principais: toList(campos.funcionalidades_principais ?? ''),
+    o_que_sistema_faz:         toList(campos.o_que_sistema_faz  ?? ''),
+    o_que_usuario_faz:         toList(campos.o_que_usuario_faz  ?? ''),
+    restricoes:                toList(campos.restricoes          ?? ''),
+    usuarios:                  campos.usuarios                  ?? '',
+    metricas_sucesso:          toList(campos.metricas_sucesso    ?? ''),
+    notas_adicionais:          campos.notas_adicionais          ?? '',
+  }
+}
+
+// ─── Prompt de extração ───────────────────────────────────────────────────────
 
 function promptTranscricao(transcricao: string): string {
   return `Analise a transcrição abaixo e extraia um rascunho estruturado do projeto.
@@ -49,37 +87,7 @@ ATENÇÃO — campos obrigatórios:
 TRANSCRIÇÃO:
 ${transcricao}
 
-${SCHEMA_JSON}`
-}
-
-// ─── Parsing robusto em 3 camadas ─────────────────────────────────────────────
-
-function parseClaudeJSON(texto: string): RascunhoPRD {
-  const limpo = texto
-    .replace(/^```json\s*/im, '')
-    .replace(/^```\s*/im,     '')
-    .replace(/\s*```\s*$/,    '')
-    .trim()
-
-  // Camada 1 — parse direto
-  try { return JSON.parse(limpo) as RascunhoPRD } catch { /* segue */ }
-
-  // Camada 2 — extrai bloco {...}
-  const match = limpo.match(/\{[\s\S]*\}/)
-  if (match) {
-    try { return JSON.parse(match[0]) as RascunhoPRD } catch { /* segue */ }
-  }
-
-  // Camada 3 — jsonrepair
-  const alvo = match?.[0] ?? limpo
-  try {
-    return JSON.parse(jsonrepair(alvo)) as RascunhoPRD
-  } catch (err) {
-    throw new Error(
-      `Não foi possível parsear a resposta do Claude após 3 tentativas. ` +
-      `Erro final: ${err instanceof Error ? err.message : String(err)}`
-    )
-  }
+${SCHEMA_CAMPOS}`
 }
 
 // ─── Handler ──────────────────────────────────────────────────────────────────
@@ -120,8 +128,8 @@ export async function POST(req: NextRequest) {
     blobUrl = blob.url
 
     // ── 2. Transcreve com Whisper ─────────────────────────────────────────────
-    const openai       = getOpenAIClient()
-    const transcricao  = await openai.audio.transcriptions.create({
+    const openai      = getOpenAIClient()
+    const transcricao = await openai.audio.transcriptions.create({
       model:    'whisper-1',
       file:     new File([buffer], audio.name, { type: audio.type || 'audio/mpeg' }),
       language: 'pt',
@@ -138,7 +146,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // ── 4. Claude extrai RascunhoPRD — com parsing robusto ───────────────────
+    // ── 4. Claude extrai RascunhoPRD com delimitadores ───────────────────────
     const anthropic = getAnthropicClient()
     const message   = await anthropic.messages.create({
       model:      'claude-sonnet-4-5',
@@ -152,7 +160,7 @@ export async function POST(req: NextRequest) {
       .map((b) => (b as { type: 'text'; text: string }).text)
       .join('')
 
-    return NextResponse.json(parseClaudeJSON(rawText))
+    return NextResponse.json(parseCamposRascunho(parseFields(rawText)))
 
   } catch (err: unknown) {
     if (blobUrl) await del(blobUrl).catch(() => {})

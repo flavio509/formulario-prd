@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { jsonrepair } from 'jsonrepair'
 import { getAnthropicClient } from '@/lib/anthropic'
+import { parseFields, toList } from '@/lib/parse-fields'
 import type { RascunhoPRD, ArquiteturaPRD } from '@/types/prd'
 
 export const maxDuration = 60
@@ -100,14 +100,13 @@ Segurança:
 // ─── System prompt ────────────────────────────────────────────────────────────
 
 const SISTEMA = `Você é o Agente Arquiteto do Sistema PRD Developer.
-Sua tarefa: analisar o rascunho de projeto abaixo e produzir uma decisão arquitetural completa em JSON.
+Sua tarefa: analisar o rascunho de projeto abaixo e produzir uma decisão arquitetural completa.
 
-REGRAS CRÍTICAS DE FORMATAÇÃO:
-1. Responda SOMENTE com JSON válido e bem formado, sem markdown, sem texto antes ou depois.
-2. Todos os campos de texto em uma única linha lógica.
-3. Para quebras dentro de strings, use \\n (nunca quebra de linha literal).
-4. Arrays sem vírgula após o último elemento.
-5. Strings com aspas internas devem usar \\".
+Responda SOMENTE usando o formato de campos delimitados especificado.
+Não use JSON, markdown, blocos de código ou qualquer outra formatação.
+Cada campo deve estar entre ===FIELD: nome=== e ===END===.
+Para campos de lista: um item por linha, sem marcadores, sem numeração.
+Não inclua nenhum texto fora dos delimitadores.
 
 Execute internamente as 5 etapas antes de responder:
 ETAPA 1: Analise contexto do negócio — setor, tipo de processo, complexidade operacional, volume.
@@ -118,50 +117,81 @@ ETAPA 5: Identifique armadilhas específicas para este projeto (APIs, custos, se
 
 ${BASE_CONHECIMENTO}
 
-SCHEMA DE SAÍDA — retorne exatamente este JSON:
-{
-  "tipo_projeto": "Nome do tipo canônico (ex: Agente Claude Code com Skills)",
-  "tipo_numero": 3,
-  "complexidade": "Simples | Média | Alta | Muito Alta",
-  "modo_operacao": "On-demand | Autônomo 24/7 | Híbrido (on-demand + cron)",
-  "escala": "Estimativa concreta (ex: 1-3 operadores, ~500 registros/mês)",
-  "stack": ["tecnologia 1", "tecnologia 2", "tecnologia 3"],
-  "banco_dados": "Decisão + justificativa resumida (ex: Supabase — leads e histórico precisam de SQL) | Nenhum — tudo em arquivos .md",
-  "agente": "Descrição do agente principal (ex: Claude Code + 2 skills customizadas)",
-  "num_agentes": "Número e justificativa (ex: 1 agente principal — complexidade não justifica multi-agente ainda)",
-  "ias_recomendadas": ["Claude Sonnet 4.5 — papel específico", "Haiku — papel específico"],
-  "skills": ["Nome da skill — o que faz especificamente"],
-  "mcps": ["Nome MCP — npx comando-de-instalacao@latest"],
-  "smart_routing": "Haiku → [tarefas leves/cron] | Sonnet → [lógica principal] | Opus → [revisão crítica]",
-  "deploy": "Onde e como (ex: Vercel — frontend Next.js | VPS Hostinger — agente OpenClaw com pm2)",
-  "mvp_funcionalidades": ["funcionalidade MVP concreta 1", "funcionalidade MVP concreta 2"],
-  "v2_funcionalidades": ["funcionalidade V2 concreta 1", "funcionalidade V2 concreta 2"],
-  "alertas": ["⚠️ alerta específico ao negócio 1", "💰 custo oculto 2", "🔒 restrição de API/legal 3"]
-}`
+SCHEMA DE SAÍDA — retorne EXATAMENTE nesta estrutura, sem nenhum texto fora dos delimitadores:
 
-// ─── Parsing robusto (3 camadas) ──────────────────────────────────────────────
+===FIELD: tipo_projeto===
+[Nome do tipo canônico — ex: Agente Claude Code com Skills]
+===END===
+===FIELD: tipo_numero===
+[Apenas o número inteiro: 1, 2, 3, 4, 5 ou 6]
+===END===
+===FIELD: complexidade===
+[Uma das opções: Simples | Média | Alta | Muito Alta]
+===END===
+===FIELD: modo_operacao===
+[Uma das opções: On-demand | Autônomo 24/7 | Híbrido (on-demand + cron)]
+===END===
+===FIELD: escala===
+[Estimativa concreta — ex: 1-3 operadores, ~500 registros/mês]
+===END===
+===FIELD: stack===
+[lista — uma tecnologia por linha]
+===END===
+===FIELD: banco_dados===
+[Decisão e justificativa resumida — ex: Supabase — leads e histórico precisam de SQL | Nenhum — tudo em arquivos .md]
+===END===
+===FIELD: agente===
+[Descrição do agente principal — ex: Claude Code + 2 skills customizadas]
+===END===
+===FIELD: num_agentes===
+[Número e justificativa — ex: 1 agente principal — complexidade não justifica multi-agente ainda]
+===END===
+===FIELD: ias_recomendadas===
+[lista — uma IA por linha com papel específico — ex: Claude Sonnet 4.5 — lógica principal]
+===END===
+===FIELD: skills===
+[lista — uma skill por linha com o que faz especificamente]
+===END===
+===FIELD: mcps===
+[lista — um MCP por linha no formato: Nome MCP — npx comando-de-instalacao@latest]
+===END===
+===FIELD: smart_routing===
+[Haiku para quê | Sonnet para quê | Opus para quê — em uma linha]
+===END===
+===FIELD: deploy===
+[Onde e como — ex: Vercel — frontend Next.js | VPS Hostinger — agente OpenClaw com pm2]
+===END===
+===FIELD: mvp_funcionalidades===
+[lista — uma funcionalidade MVP concreta por linha]
+===END===
+===FIELD: v2_funcionalidades===
+[lista — uma funcionalidade V2 concreta por linha]
+===END===
+===FIELD: alertas===
+[lista — um alerta por linha com prefixo emoji — ex: ⚠️ alerta | 💰 custo oculto | 🔒 restrição]
+===END===`
 
-function parseArquiteturaJSON(texto: string): ArquiteturaPRD {
-  const limpo = texto
-    .replace(/^```json\s*/im, '')
-    .replace(/^```\s*/im,     '')
-    .replace(/\s*```\s*$/,    '')
-    .trim()
+// ─── Parser: campos → ArquiteturaPRD ─────────────────────────────────────────
 
-  try { return JSON.parse(limpo) as ArquiteturaPRD } catch { /* segue */ }
-
-  const match = limpo.match(/\{[\s\S]*\}/)
-  if (match) {
-    try { return JSON.parse(match[0]) as ArquiteturaPRD } catch { /* segue */ }
-  }
-
-  const alvo = match?.[0] ?? limpo
-  try {
-    return JSON.parse(jsonrepair(alvo)) as ArquiteturaPRD
-  } catch (err) {
-    throw new Error(
-      `Não foi possível parsear a resposta do Arquiteto. Erro: ${err instanceof Error ? err.message : String(err)}`
-    )
+function parseCamposArquitetura(campos: Record<string, string>): ArquiteturaPRD {
+  return {
+    tipo_projeto:       campos.tipo_projeto       ?? '',
+    tipo_numero:        parseInt(campos.tipo_numero ?? '3', 10) || 3,
+    complexidade:       campos.complexidade        ?? 'Média',
+    modo_operacao:      campos.modo_operacao       ?? 'On-demand',
+    escala:             campos.escala              ?? '',
+    stack:              toList(campos.stack              ?? ''),
+    banco_dados:        campos.banco_dados         ?? '',
+    agente:             campos.agente              ?? '',
+    num_agentes:        campos.num_agentes         ?? '',
+    ias_recomendadas:   toList(campos.ias_recomendadas   ?? ''),
+    skills:             toList(campos.skills             ?? ''),
+    mcps:               toList(campos.mcps               ?? ''),
+    smart_routing:      campos.smart_routing       ?? '',
+    deploy:             campos.deploy              ?? '',
+    mvp_funcionalidades: toList(campos.mvp_funcionalidades ?? ''),
+    v2_funcionalidades:  toList(campos.v2_funcionalidades  ?? ''),
+    alertas:            toList(campos.alertas             ?? ''),
   }
 }
 
@@ -179,7 +209,6 @@ async function buscarSupabase(keywords: string[]): Promise<string> {
     'Content-Type':  'application/json',
   }
 
-  // Tenta tabelas canônicas do Sistema 1; ignora silenciosamente as que não existirem
   const tabelas = [
     { nome: 'ias',    campos: 'nome,descricao' },
     { nome: 'skills', campos: 'nome,descricao' },
@@ -277,7 +306,7 @@ ${
     : 'CONTEXTO DE PESQUISA: Nenhum resultado externo disponível — use o BASE_CONHECIMENTO para decisão completa.'
 }
 
-Analise o rascunho acima, execute as 5 etapas e retorne o JSON de arquitetura.`
+Analise o rascunho acima, execute as 5 etapas e retorne a arquitetura no formato de campos delimitados.`
 }
 
 // ─── Handler principal ────────────────────────────────────────────────────────
@@ -316,7 +345,7 @@ export async function POST(req: NextRequest) {
       .map((b) => (b as { type: 'text'; text: string }).text)
       .join('')
 
-    return NextResponse.json(parseArquiteturaJSON(rawText))
+    return NextResponse.json(parseCamposArquitetura(parseFields(rawText)))
 
   } catch (err: unknown) {
     console.error('[arquiteto]', err)
