@@ -40,9 +40,14 @@ ${SCHEMA_JSON}`
 export async function POST(req: NextRequest) {
   let blobUrl: string | null = null
 
+  const contentType = req.headers.get('content-type') ?? ''
+  if (!contentType.includes('multipart/form-data')) {
+    return NextResponse.json({ error: 'Envie o áudio como multipart/form-data' }, { status: 400 })
+  }
+
   try {
-    const form   = await req.formData()
-    const audio  = form.get('audio') as File | null
+    const form  = await req.formData()
+    const audio = form.get('audio') as File | null
 
     if (!audio) {
       return NextResponse.json({ error: 'Arquivo de áudio não enviado' }, { status: 400 })
