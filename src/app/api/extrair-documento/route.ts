@@ -1,38 +1,87 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { jsonrepair } from 'jsonrepair'
 import { getAnthropicClient } from '@/lib/anthropic'
 import type { FormularioState, RascunhoPRD } from '@/types/prd'
 
 export const maxDuration = 60
 
-// ─── Prompt compartilhado ──────────────────────────────────────────────────────
+// ─── Prompt do sistema ────────────────────────────────────────────────────────
+// Instrução explícita de escaping — resolve o bug de "Unterminated string"
+// causado por quebras de linha literais dentro de campos JSON.
 
-const SISTEMA = 'Você é um especialista em análise de negócios e arquitetura de sistemas. Responda sempre com JSON válido, sem markdown.'
+const SISTEMA = `Você é um especialista em análise de negócios e arquitetura de sistemas.
+Responda SOMENTE com JSON válido e bem formado, sem markdown, sem texto antes ou depois.
+REGRAS CRÍTICAS DE FORMATAÇÃO:
+1. Todos os campos de texto devem estar em uma única linha lógica.
+2. Para quebras de parágrafo dentro de strings, use a sequência de escape \\n (barra-n).
+3. Aspas dentro de strings devem ser escapadas como \\".
+4. Nunca inclua caracteres de controle literais (tabulações, retornos de carro, etc.) dentro de strings JSON.
+5. Arrays devem ter vírgula apenas entre elementos — sem vírgula após o último.`
 
-const SCHEMA_JSON = `{
+// ─── Schema de saída (compartilhado) ─────────────────────────────────────────
+
+const SCHEMA_JSON = `Retorne exatamente este JSON (sem chaves extras, sem markdown):
+{
   "titulo": "Nome sugestivo para o projeto (3-6 palavras, específico para o negócio)",
-  "problema": "Descrição clara do problema em 2-3 parágrafos. Seja específico sobre o negócio e o impacto.",
-  "solucao_proposta": "O que o sistema vai fazer para resolver o problema. 2-3 parágrafos concretos.",
-  "funcionalidades_principais": ["Lista de 5-8 funcionalidades principais, específicas para o negócio descrito"],
-  "o_que_sistema_faz": ["Lista do que será automatizado — específico e concreto"],
-  "o_que_usuario_faz": ["Lista do que o usuário continua fazendo — específico e concreto"],
-  "restricoes": ["O que o sistema NÃO deve fazer, com base no contexto"],
-  "usuarios": "Quem vai usar o sistema e qual dor emocional resolve",
-  "metricas_sucesso": ["Como medir se o sistema está funcionando"],
-  "notas_adicionais": "Observações importantes: restrições técnicas, alertas, contexto adicional relevante"
+  "problema": "Descrição em 2-3 parágrafos separados por \\n\\n. Específico ao negócio.",
+  "solucao_proposta": "O que o sistema fará. 2-3 parágrafos separados por \\n\\n.",
+  "funcionalidades_principais": ["funcionalidade 1", "funcionalidade 2"],
+  "o_que_sistema_faz": ["tarefa automatizada 1", "tarefa automatizada 2"],
+  "o_que_usuario_faz": ["tarefa humana 1", "tarefa humana 2"],
+  "restricoes": ["restricao 1", "restricao 2"],
+  "usuarios": "Quem usa e qual dor emocional resolve",
+  "metricas_sucesso": ["metrica 1", "metrica 2"],
+  "notas_adicionais": "Observações relevantes separadas por \\n se necessário"
 }`
+
+// ─── Parsing robusto em 3 camadas ─────────────────────────────────────────────
+
+function parseClaudeJSON(texto: string): RascunhoPRD {
+  // Remove markdown code blocks, se houver
+  const limpo = texto
+    .replace(/^```json\s*/im, '')
+    .replace(/^```\s*/im,     '')
+    .replace(/\s*```\s*$/,    '')
+    .trim()
+
+  // Camada 1 — parse direto (fast path, resolve 95% dos casos)
+  try {
+    return JSON.parse(limpo) as RascunhoPRD
+  } catch { /* segue */ }
+
+  // Camada 2 — extrai o bloco {...} e tenta novamente
+  // (resolve caso haja texto explicativo em volta do JSON)
+  const match = limpo.match(/\{[\s\S]*\}/)
+  if (match) {
+    try {
+      return JSON.parse(match[0]) as RascunhoPRD
+    } catch { /* segue */ }
+  }
+
+  // Camada 3 — jsonrepair corrige os casos mais comuns:
+  //   • newlines literais dentro de strings
+  //   • aspas não escapadas
+  //   • vírgulas duplas ou ausentes
+  //   • chaves/arrays não fechados
+  const alvo = match?.[0] ?? limpo
+  try {
+    return JSON.parse(jsonrepair(alvo)) as RascunhoPRD
+  } catch (err) {
+    throw new Error(
+      `Não foi possível parsear a resposta do Claude após 3 tentativas. ` +
+      `Erro final: ${err instanceof Error ? err.message : String(err)}`
+    )
+  }
+}
 
 // ─── Modo formulário ──────────────────────────────────────────────────────────
 
 function promptFormulario(dados: FormularioState): string {
-  return `Você é um especialista em análise de negócios e arquitetura de sistemas.
-O usuário preencheu um formulário descrevendo seu negócio e o sistema que quer construir.
-Analise as respostas e extraia um rascunho estruturado do projeto.
+  return `Analise as respostas do formulário abaixo e extraia um rascunho do projeto.
+Use linguagem clara em português do Brasil, sem jargão técnico.
 
-RESPOSTAS DO FORMULÁRIO:
+RESPOSTAS:
 ${JSON.stringify(dados, null, 2)}
-
-Use linguagem clara, em português do Brasil, sem jargão técnico desnecessário.
-Responda APENAS com JSON válido, sem texto antes ou depois, sem markdown code blocks.
 
 ${SCHEMA_JSON}`
 }
@@ -51,27 +100,23 @@ async function processarArquivos(arquivos: File[]): Promise<ContentBlock[]> {
     const ext    = arquivo.name.split('.').pop()?.toLowerCase() ?? ''
 
     if (arquivo.type === 'application/pdf' || ext === 'pdf') {
-      // PDF — Claude suporte nativo via base64
       blocos.push({
         type:   'document',
-        source: {
-          type:       'base64',
-          media_type: 'application/pdf',
-          data:       buffer.toString('base64'),
-        },
+        source: { type: 'base64', media_type: 'application/pdf', data: buffer.toString('base64') },
       })
     } else if (arquivo.type.includes('wordprocessingml') || ext === 'docx') {
-      // DOCX — extrai texto com mammoth (import dinâmico para não quebrar o bundle)
       try {
         const mammoth = await import('mammoth')
         const result  = await mammoth.extractRawText({ buffer })
-        blocos.push({ type: 'text', text: `[Arquivo: ${arquivo.name}]\n${result.value}` })
+        // Limita o texto extraído para evitar contexto excessivo que confunde o modelo
+        const texto   = result.value.slice(0, 12_000)
+        blocos.push({ type: 'text', text: `[Arquivo DOCX: ${arquivo.name}]\n${texto}` })
       } catch {
         blocos.push({ type: 'text', text: `[Arquivo: ${arquivo.name} — não foi possível extrair o texto]` })
       }
     } else {
-      // TXT / MD — lê como UTF-8
-      blocos.push({ type: 'text', text: `[Arquivo: ${arquivo.name}]\n${buffer.toString('utf-8')}` })
+      const texto = buffer.toString('utf-8').slice(0, 12_000)
+      blocos.push({ type: 'text', text: `[Arquivo: ${arquivo.name}]\n${texto}` })
     }
   }
 
@@ -79,26 +124,13 @@ async function processarArquivos(arquivos: File[]): Promise<ContentBlock[]> {
 }
 
 function promptDocumentos(nomeArquivos: string[]): string {
-  return `Você é um especialista em análise de negócios.
-O usuário enviou ${nomeArquivos.length} documento(s): ${nomeArquivos.join(', ')}.
-Leia todo o conteúdo, cruze as informações e extraia um rascunho estruturado do projeto descrito.
-
-Use linguagem clara, em português do Brasil, sem jargão técnico desnecessário.
-Se os documentos não descrevem claramente um projeto, infira o máximo possível e indique nas notas adicionais o que está incerto.
-Responda APENAS com JSON válido, sem texto antes ou depois, sem markdown code blocks.
+  return `Leia os ${nomeArquivos.length} documento(s) acima (${nomeArquivos.join(', ')}).
+Cruze as informações e extraia um rascunho estruturado do projeto descrito.
+NÃO copie trechos verbatim dos documentos — sintetize com suas próprias palavras.
+Use linguagem clara em português do Brasil, sem jargão técnico.
+Se os documentos não descrevem claramente um projeto, infira e indique nas notas_adicionais o que está incerto.
 
 ${SCHEMA_JSON}`
-}
-
-// ─── Extração de JSON da resposta ─────────────────────────────────────────────
-
-function extrairJSON(texto: string): RascunhoPRD {
-  const cleaned = texto
-    .replace(/^```json\s*/i, '')
-    .replace(/^```\s*/i, '')
-    .replace(/\s*```$/, '')
-    .trim()
-  return JSON.parse(cleaned) as RascunhoPRD
 }
 
 // ─── Handler principal ────────────────────────────────────────────────────────
@@ -108,7 +140,7 @@ export async function POST(req: NextRequest) {
   const client      = getAnthropicClient()
 
   try {
-    // ── Modo documentos (multipart) ────────────────────────────────────────────
+    // ── Modo documentos (multipart) ───────────────────────────────────────────
     if (contentType.includes('multipart/form-data')) {
       const form     = await req.formData()
       const arquivos = form.getAll('arquivos') as File[]
@@ -117,9 +149,8 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Nenhum arquivo enviado' }, { status: 400 })
       }
 
-      const blocos  = await processarArquivos(arquivos)
-      const nomes   = arquivos.map((f) => f.name)
-      const prompt  = promptDocumentos(nomes)
+      const blocos = await processarArquivos(arquivos)
+      const nomes  = arquivos.map((f) => f.name)
 
       const message = await client.messages.create({
         model:      'claude-sonnet-4-5',
@@ -127,19 +158,19 @@ export async function POST(req: NextRequest) {
         system:     SISTEMA,
         messages: [{
           role:    'user',
-          content: [...blocos, { type: 'text', text: prompt }],
+          content: [...blocos, { type: 'text', text: promptDocumentos(nomes) }],
         }],
       })
 
-      const texto = message.content
+      const rawText = message.content
         .filter((b) => b.type === 'text')
         .map((b) => (b as { type: 'text'; text: string }).text)
         .join('')
 
-      return NextResponse.json(extrairJSON(texto))
+      return NextResponse.json(parseClaudeJSON(rawText))
     }
 
-    // ── Modo formulário (JSON) ─────────────────────────────────────────────────
+    // ── Modo formulário (JSON) ────────────────────────────────────────────────
     const body = await req.json()
     const { dados } = body as { tipo: string; dados: FormularioState }
 
@@ -154,12 +185,12 @@ export async function POST(req: NextRequest) {
       messages: [{ role: 'user', content: promptFormulario(dados) }],
     })
 
-    const texto = message.content
+    const rawText = message.content
       .filter((b) => b.type === 'text')
       .map((b) => (b as { type: 'text'; text: string }).text)
       .join('')
 
-    return NextResponse.json(extrairJSON(texto))
+    return NextResponse.json(parseClaudeJSON(rawText))
 
   } catch (err: unknown) {
     console.error('[extrair-documento]', err)

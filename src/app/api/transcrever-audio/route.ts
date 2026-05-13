@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { put, del } from '@vercel/blob'
+import { jsonrepair } from 'jsonrepair'
 import { getOpenAIClient }    from '@/lib/openai'
 import { getAnthropicClient } from '@/lib/anthropic'
 import type { RascunhoPRD } from '@/types/prd'
@@ -8,34 +9,75 @@ export const maxDuration = 60
 
 const TIPOS_ACEITOS = ['audio/mpeg', 'audio/mp4', 'audio/wav', 'audio/x-m4a', 'audio/m4a', 'audio/aac', 'audio/webm']
 
-const SCHEMA_JSON = `{
+// ─── Prompt do sistema (escaping explícito) ───────────────────────────────────
+
+const SISTEMA = `Você é um especialista em análise de negócios e arquitetura de sistemas.
+Responda SOMENTE com JSON válido e bem formado, sem markdown, sem texto antes ou depois.
+REGRAS CRÍTICAS DE FORMATAÇÃO:
+1. Todos os campos de texto devem estar em uma única linha lógica.
+2. Para quebras de parágrafo dentro de strings, use a sequência de escape \\n (barra-n).
+3. Aspas dentro de strings devem ser escapadas como \\".
+4. Nunca inclua caracteres de controle literais dentro de strings JSON.
+5. Arrays devem ter vírgula apenas entre elementos — sem vírgula após o último.`
+
+const SCHEMA_JSON = `Retorne exatamente este JSON (sem chaves extras, sem markdown):
+{
   "titulo": "Nome sugestivo para o projeto (3-6 palavras, específico para o negócio)",
-  "problema": "Descrição clara do problema em 2-3 parágrafos. Seja específico sobre o negócio e o impacto.",
-  "solucao_proposta": "O que o sistema vai fazer para resolver o problema. 2-3 parágrafos concretos.",
-  "funcionalidades_principais": ["Lista de 5-8 funcionalidades principais, específicas para o negócio descrito"],
-  "o_que_sistema_faz": ["Lista do que será automatizado — específico e concreto"],
-  "o_que_usuario_faz": ["Lista do que o usuário continua fazendo — específico e concreto"],
-  "restricoes": ["O que o sistema NÃO deve fazer, com base no contexto"],
-  "usuarios": "Quem vai usar o sistema e qual dor emocional resolve",
-  "metricas_sucesso": ["Como medir se o sistema está funcionando"],
-  "notas_adicionais": "Observações importantes: restrições técnicas, alertas, contexto adicional relevante. Inclua [Fonte: áudio transcrito] aqui."
+  "problema": "Descrição em 2-3 parágrafos separados por \\n\\n. Específico ao negócio.",
+  "solucao_proposta": "O que o sistema fará. 2-3 parágrafos separados por \\n\\n.",
+  "funcionalidades_principais": ["funcionalidade 1", "funcionalidade 2"],
+  "o_que_sistema_faz": ["tarefa automatizada 1", "tarefa automatizada 2"],
+  "o_que_usuario_faz": ["tarefa humana 1", "tarefa humana 2"],
+  "restricoes": ["restricao 1", "restricao 2"],
+  "usuarios": "Quem usa e qual dor emocional resolve",
+  "metricas_sucesso": ["metrica 1", "metrica 2"],
+  "notas_adicionais": "Observações relevantes separadas por \\n se necessário. [Fonte: áudio transcrito]"
 }`
 
 function promptTranscricao(transcricao: string): string {
-  return `Você é um especialista em análise de negócios e arquitetura de sistemas.
-Abaixo está a transcrição de um áudio onde o usuário descreve seu negócio e o sistema que quer construir.
-Analise a transcrição e extraia um rascunho estruturado do projeto.
+  return `Analise a transcrição abaixo e extraia um rascunho estruturado do projeto.
+NÃO copie frases verbatim da transcrição — sintetize com suas próprias palavras.
+Use linguagem clara em português do Brasil, sem jargão técnico.
+Extraia informações concretas mesmo que a fala seja informal ou repetitiva.
+Se algo não estiver claro, infira pelo contexto e indique nas notas_adicionais.
 
 TRANSCRIÇÃO:
 ${transcricao}
 
-Use linguagem clara, em português do Brasil, sem jargão técnico desnecessário.
-Foque em extrair informações concretas mesmo que a fala seja informal ou repetitiva.
-Se algo não estiver claro, use o contexto para inferir e indique nas notas adicionais.
-Responda APENAS com JSON válido, sem texto antes ou depois, sem markdown code blocks.
-
 ${SCHEMA_JSON}`
 }
+
+// ─── Parsing robusto em 3 camadas ─────────────────────────────────────────────
+
+function parseClaudeJSON(texto: string): RascunhoPRD {
+  const limpo = texto
+    .replace(/^```json\s*/im, '')
+    .replace(/^```\s*/im,     '')
+    .replace(/\s*```\s*$/,    '')
+    .trim()
+
+  // Camada 1 — parse direto
+  try { return JSON.parse(limpo) as RascunhoPRD } catch { /* segue */ }
+
+  // Camada 2 — extrai bloco {...}
+  const match = limpo.match(/\{[\s\S]*\}/)
+  if (match) {
+    try { return JSON.parse(match[0]) as RascunhoPRD } catch { /* segue */ }
+  }
+
+  // Camada 3 — jsonrepair
+  const alvo = match?.[0] ?? limpo
+  try {
+    return JSON.parse(jsonrepair(alvo)) as RascunhoPRD
+  } catch (err) {
+    throw new Error(
+      `Não foi possível parsear a resposta do Claude após 3 tentativas. ` +
+      `Erro final: ${err instanceof Error ? err.message : String(err)}`
+    )
+  }
+}
+
+// ─── Handler ──────────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
   let blobUrl: string | null = null
@@ -53,8 +95,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Arquivo de áudio não enviado' }, { status: 400 })
     }
 
-    // Valida tipo
-    const ext      = audio.name.split('.').pop()?.toLowerCase() ?? ''
+    const ext        = audio.name.split('.').pop()?.toLowerCase() ?? ''
     const tipoValido = TIPOS_ACEITOS.includes(audio.type) ||
       ['mp3', 'm4a', 'wav', 'aac', 'webm'].includes(ext)
 
@@ -69,22 +110,20 @@ export async function POST(req: NextRequest) {
 
     // ── 1. Salva no Vercel Blob (temporário) ──────────────────────────────────
     const blob = await put(`audio-temp/${Date.now()}-${audio.name}`, buffer, {
-      access:      'public',
-      contentType: audio.type || 'audio/mpeg',
+      access: 'public', contentType: audio.type || 'audio/mpeg',
     })
     blobUrl = blob.url
 
     // ── 2. Transcreve com Whisper ─────────────────────────────────────────────
-    const openai = getOpenAIClient()
-
-    const transcricao = await openai.audio.transcriptions.create({
+    const openai       = getOpenAIClient()
+    const transcricao  = await openai.audio.transcriptions.create({
       model:    'whisper-1',
       file:     new File([buffer], audio.name, { type: audio.type || 'audio/mpeg' }),
       language: 'pt',
     })
 
     // ── 3. Deleta do Blob ─────────────────────────────────────────────────────
-    await del(blobUrl).catch(() => { /* não bloqueia se falhar */ })
+    await del(blobUrl).catch(() => {})
     blobUrl = null
 
     if (!transcricao.text?.trim()) {
@@ -94,14 +133,13 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // ── 4. Claude extrai RascunhoPRD da transcrição ───────────────────────────
+    // ── 4. Claude extrai RascunhoPRD — com parsing robusto ───────────────────
     const anthropic = getAnthropicClient()
-
-    const message = await anthropic.messages.create({
+    const message   = await anthropic.messages.create({
       model:      'claude-sonnet-4-5',
       max_tokens: 2048,
-      system:     'Você é um especialista em análise de negócios. Responda sempre com JSON válido, sem markdown.',
-      messages: [{ role: 'user', content: promptTranscricao(transcricao.text) }],
+      system:     SISTEMA,
+      messages:   [{ role: 'user', content: promptTranscricao(transcricao.text) }],
     })
 
     const rawText = message.content
@@ -109,22 +147,10 @@ export async function POST(req: NextRequest) {
       .map((b) => (b as { type: 'text'; text: string }).text)
       .join('')
 
-    const cleaned = rawText
-      .replace(/^```json\s*/i, '')
-      .replace(/^```\s*/i, '')
-      .replace(/\s*```$/, '')
-      .trim()
-
-    const rascunho: RascunhoPRD = JSON.parse(cleaned)
-
-    return NextResponse.json(rascunho)
+    return NextResponse.json(parseClaudeJSON(rawText))
 
   } catch (err: unknown) {
-    // Limpa blob se algo deu errado após o upload
-    if (blobUrl) {
-      await del(blobUrl).catch(() => {})
-    }
-
+    if (blobUrl) await del(blobUrl).catch(() => {})
     console.error('[transcrever-audio]', err)
     const msg = err instanceof Error ? err.message : 'Erro interno'
     return NextResponse.json({ error: msg }, { status: 500 })

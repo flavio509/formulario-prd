@@ -16,6 +16,7 @@
     "@vercel/blob": "^0.27.0",
     "jszip": "^3.10.1",
     "mammoth": "^1.8.0",
+    "jsonrepair": "^3.11.3",
     "openai": "^4.97.0"
   },
   "devDependencies": {
