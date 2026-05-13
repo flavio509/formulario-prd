@@ -16,7 +16,8 @@
 export function parseFields(texto: string): Record<string, string> {
   const campos: Record<string, string> = {}
 
-  const regex = /===FIELD:\s*([^=\r\n]+?)\s*===\r?\n([\s\S]*?)===END===/g
+  // \r?\n? — newline após o delimitador é opcional (Claude pode colocar conteúdo na mesma linha)
+  const regex = /===FIELD:\s*([^=\r\n]+?)\s*===\r?\n?([\s\S]*?)===END===/g
   let m: RegExpExecArray | null
 
   while ((m = regex.exec(texto)) !== null) {

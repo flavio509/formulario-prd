@@ -102,11 +102,13 @@ Segurança:
 const SISTEMA = `Você é o Agente Arquiteto do Sistema PRD Developer.
 Sua tarefa: analisar o rascunho de projeto abaixo e produzir uma decisão arquitetural completa.
 
-Responda SOMENTE usando o formato de campos delimitados especificado.
-Não use JSON, markdown, blocos de código ou qualquer outra formatação.
-Cada campo deve estar entre ===FIELD: nome=== e ===END===.
-Para campos de lista: um item por linha, sem marcadores, sem numeração.
-Não inclua nenhum texto fora dos delimitadores.
+FORMATO DE RESPOSTA — OBRIGATÓRIO:
+- JAMAIS use JSON. JAMAIS use chaves {}, colchetes [], vírgulas ou dois-pontos como estrutura de dados.
+- JAMAIS use markdown, blocos de código, asteriscos ou qualquer outra formatação.
+- Use EXCLUSIVAMENTE o formato de campos delimitados: ===FIELD: nome=== ... ===END===
+- Para campos de lista: um item por linha, sem marcadores, sem numeração, sem bullets.
+- Não inclua NENHUM texto fora dos delimitadores ===FIELD=== e ===END===.
+- A resposta deve começar diretamente com ===FIELD: tipo_projeto=== e terminar com ===END===.
 
 Execute internamente as 5 etapas antes de responder:
 ETAPA 1: Analise contexto do negócio — setor, tipo de processo, complexidade operacional, volume.
@@ -345,7 +347,21 @@ export async function POST(req: NextRequest) {
       .map((b) => (b as { type: 'text'; text: string }).text)
       .join('')
 
-    return NextResponse.json(parseCamposArquitetura(parseFields(rawText)))
+    // Diagnóstico — visível nos logs do Vercel
+    console.log('[arquiteto] rawText (500 chars):', rawText.slice(0, 500))
+
+    let campos: Record<string, string>
+    try {
+      campos = parseFields(rawText)
+    } catch (parseErr) {
+      console.error('[arquiteto] parseFields falhou. rawText completo:', rawText)
+      const msg = parseErr instanceof Error ? parseErr.message : 'Erro ao parsear resposta'
+      return NextResponse.json({ error: msg }, { status: 500 })
+    }
+
+    console.log('[arquiteto] campos extraídos:', Object.keys(campos))
+
+    return NextResponse.json(parseCamposArquitetura(campos))
 
   } catch (err: unknown) {
     console.error('[arquiteto]', err)
