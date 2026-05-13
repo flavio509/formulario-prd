@@ -5,53 +5,49 @@ import { SESSION_KEYS } from '@/types/prd'
 
 const MODOS = [
   {
-    id:          'formulario',
-    emoji:       '📋',
-    titulo:      'Formulário guiado',
-    descricao:   'Responda perguntas simples sobre o seu negócio. O sistema entende o contexto e gera o projeto.',
-    tempo:       '5–8 minutos',
-    badge:       'Recomendado',
-    badgeCls:    'bg-blue-500/15 text-blue-400 border-blue-500/30',
-    href:        '/formulario',
+    id:       'formulario',
+    emoji:    '📋',
+    titulo:   'Formulário guiado',
+    descricao:'Responda perguntas simples sobre o seu negócio. O sistema entende o contexto e gera o projeto.',
+    tempo:    '5–8 minutos',
+    badge:    'Recomendado',
+    badgeCls: 'bg-blue-500/15 text-blue-400 border-blue-500/30',
+    href:     '/formulario',
   },
   {
-    id:          'documento',
-    emoji:       '📄',
-    titulo:      'Enviar documentos',
-    descricao:   'Envie até 3 arquivos (PDF, DOCX, TXT, MD). Pode ser briefing, anotações, transcrição de reunião — qualquer coisa.',
-    tempo:       'Upload + revisão',
-    badge:       'Em breve',
-    badgeCls:    'bg-zinc-700/50 text-zinc-500 border-zinc-700',
-    href:        '/documento',
-    disabled:    true,
+    id:       'documento',
+    emoji:    '📄',
+    titulo:   'Enviar documentos',
+    descricao:'Envie até 3 arquivos (PDF, DOCX, TXT, MD). Briefing, anotações, transcrição de reunião — qualquer coisa.',
+    tempo:    'Upload + revisão',
+    badge:    'Novo',
+    badgeCls: 'bg-violet-500/15 text-violet-400 border-violet-500/30',
+    href:     '/documento',
   },
   {
-    id:          'audio',
-    emoji:       '🎙️',
-    titulo:      'Enviar áudio',
-    descricao:   'Envie uma gravação de voz, reunião ou briefing. O sistema transcreve e extrai as informações.',
-    tempo:       'Até 10 minutos',
-    badge:       'Em breve',
-    badgeCls:    'bg-zinc-700/50 text-zinc-500 border-zinc-700',
-    href:        '/audio',
-    disabled:    true,
+    id:       'audio',
+    emoji:    '🎙️',
+    titulo:   'Enviar áudio',
+    descricao:'Envie uma gravação de voz, reunião ou briefing. O sistema transcreve e extrai as informações.',
+    tempo:    'Até 10 minutos',
+    badge:    'Novo',
+    badgeCls: 'bg-violet-500/15 text-violet-400 border-violet-500/30',
+    href:     '/audio',
   },
 ]
 
 export default function HomePage() {
   const router = useRouter()
 
-  function handleModo(modo: string, href: string) {
-    if (typeof window !== 'undefined') {
-      // Limpa sessão anterior
-      Object.values(SESSION_KEYS).forEach((k) => sessionStorage.removeItem(k))
-      sessionStorage.setItem(SESSION_KEYS.MODO, modo)
-    }
+  function handleModo(id: string, href: string) {
+    Object.values(SESSION_KEYS).forEach((k) => sessionStorage.removeItem(k))
+    sessionStorage.setItem(SESSION_KEYS.MODO, id)
     router.push(href)
   }
 
   return (
     <main className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center px-4 py-12">
+
       {/* Header */}
       <div className="text-center mb-12 max-w-xl">
         <div className="inline-flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-full px-4 py-1.5 text-xs text-zinc-400 font-medium mb-6">
@@ -79,13 +75,8 @@ export default function HomePage() {
         {MODOS.map((modo) => (
           <button
             key={modo.id}
-            onClick={() => !modo.disabled && handleModo(modo.id, modo.href)}
-            disabled={modo.disabled}
-            className={`relative group text-left p-5 rounded-2xl border transition-all duration-200 ${
-              modo.disabled
-                ? 'border-zinc-800 bg-zinc-900/40 cursor-not-allowed opacity-60'
-                : 'border-zinc-800 bg-zinc-900 hover:border-blue-500/50 hover:bg-zinc-800/80 cursor-pointer'
-            }`}
+            onClick={() => handleModo(modo.id, modo.href)}
+            className="relative group text-left p-5 rounded-2xl border border-zinc-800 bg-zinc-900 hover:border-blue-500/50 hover:bg-zinc-800/80 transition-all duration-200 cursor-pointer"
           >
             {/* Badge */}
             <span className={`inline-block text-xs font-medium px-2.5 py-0.5 rounded-full border mb-4 ${modo.badgeCls}`}>
@@ -107,12 +98,10 @@ export default function HomePage() {
               <span>{modo.tempo}</span>
             </div>
 
-            {/* Arrow (active only) */}
-            {!modo.disabled && (
-              <div className="absolute bottom-5 right-5 opacity-0 group-hover:opacity-100 transition-opacity text-blue-400">
-                →
-              </div>
-            )}
+            {/* Arrow */}
+            <div className="absolute bottom-5 right-5 opacity-0 group-hover:opacity-100 transition-opacity text-blue-400">
+              →
+            </div>
           </button>
         ))}
       </div>
