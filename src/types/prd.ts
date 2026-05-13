@@ -83,6 +83,7 @@ export interface ArquiteturaPRD {
   banco_dados: string
   agente: string
   num_agentes: string
+  ias_recomendadas: string[]
   skills: string[]
   mcps: string[]
   smart_routing: string
