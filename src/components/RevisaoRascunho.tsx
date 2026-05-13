@@ -58,12 +58,12 @@ function SecaoLista({
       <div className="space-y-2">
         {(Array.isArray(value) ? value : []).map((item, i) => (
           <div key={i} className="flex gap-2 items-start">
-            <span className="mt-3 text-zinc-600 text-xs flex-shrink-0">•</span>
-            <input
-              type="text"
+            <span className="mt-2.5 text-zinc-600 text-xs flex-shrink-0">•</span>
+            <textarea
+              rows={2}
               value={item}
               onChange={(e) => updateItem(i, e.target.value)}
-              className="flex-1 px-3 py-2 rounded-lg border border-zinc-700 bg-zinc-900/60 text-sm text-zinc-200 focus:outline-none focus:border-blue-500/70 transition-colors"
+              className="flex-1 px-3 py-2 rounded-lg border border-zinc-700 bg-zinc-900/60 text-sm text-zinc-200 focus:outline-none focus:border-blue-500/70 transition-colors resize-none leading-snug"
             />
             <button
               type="button"
@@ -149,18 +149,16 @@ export default function RevisaoRascunho({ rascunho, onConfirmar, loading = false
       />
 
       {/* Humano vs Sistema */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-        <SecaoLista
-          label="✅ O que o sistema faz"
-          value={data.o_que_sistema_faz}
-          onChange={(v) => set('o_que_sistema_faz', v)}
-        />
-        <SecaoLista
-          label="👤 O que você faz"
-          value={data.o_que_usuario_faz}
-          onChange={(v) => set('o_que_usuario_faz', v)}
-        />
-      </div>
+      <SecaoLista
+        label="✅ O que o sistema faz"
+        value={data.o_que_sistema_faz}
+        onChange={(v) => set('o_que_sistema_faz', v)}
+      />
+      <SecaoLista
+        label="👤 O que você faz"
+        value={data.o_que_usuario_faz}
+        onChange={(v) => set('o_que_usuario_faz', v)}
+      />
 
       {/* Restrições */}
       <SecaoLista
@@ -178,11 +176,16 @@ export default function RevisaoRascunho({ rascunho, onConfirmar, loading = false
       />
 
       {/* Métricas */}
-      <SecaoLista
-        label="📊 Métricas de sucesso"
-        value={data.metricas_sucesso}
-        onChange={(v) => set('metricas_sucesso', v)}
-      />
+      <div className="space-y-1">
+        <SecaoLista
+          label="📊 Métricas de sucesso"
+          value={data.metricas_sucesso}
+          onChange={(v) => set('metricas_sucesso', v)}
+        />
+        <p className="text-xs text-zinc-600 pt-1">
+          💡 Adapte ou adicione métricas específicas ao seu negócio.
+        </p>
+      </div>
 
       {/* Notas */}
       <SecaoTexto

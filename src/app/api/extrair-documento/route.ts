@@ -24,13 +24,13 @@ const SCHEMA_JSON = `Retorne exatamente este JSON (sem chaves extras, sem markdo
 {
   "titulo": "Nome sugestivo para o projeto (3-6 palavras, específico para o negócio)",
   "problema": "Descrição em 2-3 parágrafos separados por \\n\\n. Específico ao negócio.",
-  "solucao_proposta": "O que o sistema fará. 2-3 parágrafos separados por \\n\\n.",
+  "solucao_proposta": "O SISTEMA DE SOFTWARE que será construído para resolver o problema. Descreva as automações, integrações e funcionalidades do sistema — NÃO resuma o conteúdo do documento. 2-3 parágrafos separados por \\n\\n.",
   "funcionalidades_principais": ["funcionalidade 1", "funcionalidade 2"],
   "o_que_sistema_faz": ["tarefa automatizada 1", "tarefa automatizada 2"],
   "o_que_usuario_faz": ["tarefa humana 1", "tarefa humana 2"],
   "restricoes": ["restricao 1", "restricao 2"],
-  "usuarios": "Quem usa e qual dor emocional resolve",
-  "metricas_sucesso": ["metrica 1", "metrica 2"],
+  "usuarios": "OBRIGATÓRIO. Perfil de quem usará o sistema (ex: gerentes de loja, atendentes), frequência de uso e principal dor emocional que o sistema resolve. Infira pelo contexto se não estiver explícito. Nunca deixe em branco.",
+  "metricas_sucesso": ["OBRIGATÓRIO — gere 3-5 métricas mensuráveis mesmo que o documento não as cite. Ex: redução de tempo, taxa de adoção, redução de erros, NPS, ROI."],
   "notas_adicionais": "Observações relevantes separadas por \\n se necessário"
 }`
 
@@ -79,6 +79,11 @@ function parseClaudeJSON(texto: string): RascunhoPRD {
 function promptFormulario(dados: FormularioState): string {
   return `Analise as respostas do formulário abaixo e extraia um rascunho do projeto.
 Use linguagem clara em português do Brasil, sem jargão técnico.
+
+ATENÇÃO — campos obrigatórios:
+- "solucao_proposta" deve descrever o SISTEMA DE SOFTWARE a ser construído, não resumir as respostas.
+- "usuarios" é obrigatório — identifique quem usará o sistema; infira pelo contexto se não estiver explícito.
+- "metricas_sucesso" é obrigatório — gere 3-5 métricas mensuráveis mesmo que as respostas não as citem.
 
 RESPOSTAS:
 ${JSON.stringify(dados, null, 2)}
@@ -129,6 +134,11 @@ Cruze as informações e extraia um rascunho estruturado do projeto descrito.
 NÃO copie trechos verbatim dos documentos — sintetize com suas próprias palavras.
 Use linguagem clara em português do Brasil, sem jargão técnico.
 Se os documentos não descrevem claramente um projeto, infira e indique nas notas_adicionais o que está incerto.
+
+ATENÇÃO — campos obrigatórios:
+- "solucao_proposta" deve descrever o SISTEMA DE SOFTWARE a ser construído para o negócio, não resumir o conteúdo dos documentos.
+- "usuarios" é obrigatório — identifique quem usará o sistema; infira pelo contexto se não estiver explícito.
+- "metricas_sucesso" é obrigatório — gere 3-5 métricas mensuráveis mesmo que os documentos não as citem.
 
 ${SCHEMA_JSON}`
 }

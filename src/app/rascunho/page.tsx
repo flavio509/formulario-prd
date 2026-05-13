@@ -8,6 +8,13 @@ import { SESSION_KEYS } from '@/types/prd'
 
 type Estado = 'carregando' | 'pronto' | 'confirmado' | 'erro'
 
+// Métricas sugeridas automaticamente quando o Claude não retorna nenhuma
+const METRICAS_FALLBACK = [
+  'Redução do tempo gasto no processo atual (meta: -50%)',
+  'Taxa de adoção pelos usuários no primeiro mês (meta: ≥ 80%)',
+  'Redução de erros operacionais (meta: -70%)',
+]
+
 // Garante que todos os campos tenham tipos seguros,
 // independente do que o Claude retornou.
 function normalizarRascunho(raw: unknown): RascunhoPRD {
@@ -22,6 +29,8 @@ function normalizarRascunho(raw: unknown): RascunhoPRD {
     return []
   }
 
+  const metricas = toArray(r.metricas_sucesso)
+
   return {
     titulo:                     toStr(r.titulo),
     problema:                   toStr(r.problema),
@@ -31,7 +40,7 @@ function normalizarRascunho(raw: unknown): RascunhoPRD {
     o_que_usuario_faz:          toArray(r.o_que_usuario_faz),
     restricoes:                 toArray(r.restricoes),
     usuarios:                   toStr(r.usuarios),
-    metricas_sucesso:           toArray(r.metricas_sucesso),
+    metricas_sucesso:           metricas.length > 0 ? metricas : METRICAS_FALLBACK,
     notas_adicionais:           toStr(r.notas_adicionais),
   }
 }

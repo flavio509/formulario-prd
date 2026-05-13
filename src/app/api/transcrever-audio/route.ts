@@ -24,13 +24,13 @@ const SCHEMA_JSON = `Retorne exatamente este JSON (sem chaves extras, sem markdo
 {
   "titulo": "Nome sugestivo para o projeto (3-6 palavras, específico para o negócio)",
   "problema": "Descrição em 2-3 parágrafos separados por \\n\\n. Específico ao negócio.",
-  "solucao_proposta": "O que o sistema fará. 2-3 parágrafos separados por \\n\\n.",
+  "solucao_proposta": "O SISTEMA DE SOFTWARE que será construído para resolver o problema. Descreva as automações, integrações e funcionalidades do sistema — NÃO transcreva ou resuma a fala. 2-3 parágrafos separados por \\n\\n.",
   "funcionalidades_principais": ["funcionalidade 1", "funcionalidade 2"],
   "o_que_sistema_faz": ["tarefa automatizada 1", "tarefa automatizada 2"],
   "o_que_usuario_faz": ["tarefa humana 1", "tarefa humana 2"],
   "restricoes": ["restricao 1", "restricao 2"],
-  "usuarios": "Quem usa e qual dor emocional resolve",
-  "metricas_sucesso": ["metrica 1", "metrica 2"],
+  "usuarios": "OBRIGATÓRIO. Perfil de quem usará o sistema (ex: gerentes de loja, atendentes), frequência de uso e principal dor emocional que o sistema resolve. Infira pelo contexto se não estiver explícito. Nunca deixe em branco.",
+  "metricas_sucesso": ["OBRIGATÓRIO — gere 3-5 métricas mensuráveis mesmo que a fala não as cite. Ex: redução de tempo, taxa de adoção, redução de erros, NPS, ROI."],
   "notas_adicionais": "Observações relevantes separadas por \\n se necessário. [Fonte: áudio transcrito]"
 }`
 
@@ -40,6 +40,11 @@ NÃO copie frases verbatim da transcrição — sintetize com suas próprias pal
 Use linguagem clara em português do Brasil, sem jargão técnico.
 Extraia informações concretas mesmo que a fala seja informal ou repetitiva.
 Se algo não estiver claro, infira pelo contexto e indique nas notas_adicionais.
+
+ATENÇÃO — campos obrigatórios:
+- "solucao_proposta" deve descrever o SISTEMA DE SOFTWARE a ser construído, não resumir a fala.
+- "usuarios" é obrigatório — identifique quem usará o sistema; infira pelo contexto se não estiver explícito.
+- "metricas_sucesso" é obrigatório — gere 3-5 métricas mensuráveis mesmo que a fala não as cite.
 
 TRANSCRIÇÃO:
 ${transcricao}
