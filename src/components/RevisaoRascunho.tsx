@@ -22,7 +22,7 @@ function SecaoTexto({
         {label}
       </label>
       <textarea
-        value={value}
+        value={value ?? ''}
         onChange={(e) => onChange(e.target.value)}
         rows={rows}
         className="w-full px-4 py-3 rounded-xl border border-zinc-700 bg-zinc-900/60 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/70 resize-none transition-colors leading-relaxed"
@@ -56,7 +56,7 @@ function SecaoLista({
         {label}
       </label>
       <div className="space-y-2">
-        {value.map((item, i) => (
+        {(Array.isArray(value) ? value : []).map((item, i) => (
           <div key={i} className="flex gap-2 items-start">
             <span className="mt-3 text-zinc-600 text-xs flex-shrink-0">•</span>
             <input
@@ -119,7 +119,7 @@ export default function RevisaoRascunho({ rascunho, onConfirmar, loading = false
         </label>
         <input
           type="text"
-          value={data.titulo}
+          value={data.titulo ?? ''}
           onChange={(e) => set('titulo', e.target.value)}
           className="w-full px-4 py-3 rounded-xl border border-zinc-700 bg-zinc-900/60 text-base font-semibold text-zinc-100 focus:outline-none focus:border-blue-500/70 transition-colors"
         />
@@ -204,7 +204,7 @@ export default function RevisaoRascunho({ rascunho, onConfirmar, loading = false
         <button
           type="button"
           onClick={() => onConfirmar(data)}
-          disabled={loading || !data.titulo.trim()}
+          disabled={loading || !(data.titulo ?? '').trim()}
           className="px-8 py-3 rounded-xl font-semibold text-sm bg-blue-600 text-white hover:bg-blue-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
         >
           {loading ? (

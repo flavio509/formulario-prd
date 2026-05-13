@@ -8,6 +8,34 @@ import { SESSION_KEYS } from '@/types/prd'
 
 type Estado = 'carregando' | 'pronto' | 'confirmado' | 'erro'
 
+// Garante que todos os campos tenham tipos seguros,
+// independente do que o Claude retornou.
+function normalizarRascunho(raw: unknown): RascunhoPRD {
+  const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+
+  const toStr = (v: unknown): string =>
+    typeof v === 'string' ? v : ''
+
+  const toArray = (v: unknown): string[] => {
+    if (Array.isArray(v)) return v.map(toStr).filter(Boolean)
+    if (typeof v === 'string' && v.trim()) return [v]
+    return []
+  }
+
+  return {
+    titulo:                     toStr(r.titulo),
+    problema:                   toStr(r.problema),
+    solucao_proposta:           toStr(r.solucao_proposta),
+    funcionalidades_principais: toArray(r.funcionalidades_principais),
+    o_que_sistema_faz:          toArray(r.o_que_sistema_faz),
+    o_que_usuario_faz:          toArray(r.o_que_usuario_faz),
+    restricoes:                 toArray(r.restricoes),
+    usuarios:                   toStr(r.usuarios),
+    metricas_sucesso:           toArray(r.metricas_sucesso),
+    notas_adicionais:           toStr(r.notas_adicionais),
+  }
+}
+
 export default function RascunhoPage() {
   const router = useRouter()
   const [estado,   setEstado]   = useState<Estado>('carregando')
@@ -20,9 +48,10 @@ export default function RascunhoPage() {
       return
     }
     try {
-      setRascunho(JSON.parse(raw) as RascunhoPRD)
+      setRascunho(normalizarRascunho(JSON.parse(raw)))
       setEstado('pronto')
-    } catch {
+    } catch (e) {
+      console.error('[rascunho] Falha ao carregar sessionStorage:', e)
       setEstado('erro')
     }
   }, [])
