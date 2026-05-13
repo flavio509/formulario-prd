@@ -35,7 +35,7 @@ function autenticar(req, res, next) {
 
 function parseArquivos(texto) {
   const arquivos = {}
-  const regex = /===FILE:\s*([^\n]+?)\s*===\n([\s\S]*?)===END===/g
+  const regex = /===FILE: ([^\n]+)===\n([\s\S]*?)===END===/g
   let match
   while ((match = regex.exec(texto)) !== null) {
     const nome     = match[1].trim()
