@@ -311,6 +311,48 @@ ${
 Analise o rascunho acima, execute as 5 etapas e retorne a arquitetura no formato de campos delimitados.`
 }
 
+// ─── Lógica inline (fallback dev / VPS indisponível) ─────────────────────────
+
+async function executarInline(rascunho: RascunhoPRD): Promise<NextResponse> {
+  const keywords   = extrairKeywords(rascunho)
+  const braveQuery = `${rascunho.titulo} automação software arquitetura`
+
+  const [supabaseResult, braveResult] = await Promise.allSettled([
+    buscarSupabase(keywords),
+    buscarBrave(braveQuery),
+  ])
+
+  const supabaseCtx = supabaseResult.status === 'fulfilled' ? supabaseResult.value : ''
+  const braveCtx    = braveResult.status    === 'fulfilled' ? braveResult.value    : ''
+
+  const anthropic = getAnthropicClient()
+  const message   = await anthropic.messages.create({
+    model:      'claude-sonnet-4-5',
+    max_tokens: 4096,
+    system:     SISTEMA,
+    messages:   [{ role: 'user', content: buildPrompt(rascunho, supabaseCtx, braveCtx) }],
+  })
+
+  const rawText = message.content
+    .filter((b) => b.type === 'text')
+    .map((b) => (b as { type: 'text'; text: string }).text)
+    .join('')
+
+  console.log('[arquiteto] rawText (500 chars):', rawText.slice(0, 500))
+
+  let campos: Record<string, string>
+  try {
+    campos = parseFields(rawText)
+  } catch (parseErr) {
+    console.error('[arquiteto] parseFields falhou. rawText completo:', rawText)
+    const msg = parseErr instanceof Error ? parseErr.message : 'Erro ao parsear resposta'
+    return NextResponse.json({ error: msg }, { status: 500 })
+  }
+
+  console.log('[arquiteto] campos extraídos:', Object.keys(campos))
+  return NextResponse.json(parseCamposArquitetura(campos))
+}
+
 // ─── Handler principal ────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
@@ -322,46 +364,40 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Rascunho não informado' }, { status: 400 })
     }
 
-    const keywords   = extrairKeywords(rascunho)
-    const braveQuery = `${rascunho.titulo} automação software arquitetura`
+    // ── Proxy para VPS quando configurado ──────────────────────────────────
+    const vpsUrl = process.env.NEXT_PUBLIC_GERAR_PRD_URL
+    const token  = process.env.GERAR_PRD_TOKEN
 
-    // Pesquisa externa em paralelo — falhas são silenciosas
-    const [supabaseResult, braveResult] = await Promise.allSettled([
-      buscarSupabase(keywords),
-      buscarBrave(braveQuery),
-    ])
+    if (vpsUrl && token) {
+      console.log('[arquiteto] proxy → VPS')
+      const vpsRes = await fetch(`${vpsUrl}/arquiteto`, {
+        method:  'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ rascunho }),
+      })
 
-    const supabaseCtx = supabaseResult.status === 'fulfilled' ? supabaseResult.value : ''
-    const braveCtx    = braveResult.status    === 'fulfilled' ? braveResult.value    : ''
+      const texto = await vpsRes.text()
 
-    const anthropic = getAnthropicClient()
-    const message   = await anthropic.messages.create({
-      model:      'claude-sonnet-4-5',
-      max_tokens: 4096,
-      system:     SISTEMA,
-      messages:   [{ role: 'user', content: buildPrompt(rascunho, supabaseCtx, braveCtx) }],
-    })
+      if (!vpsRes.ok) {
+        let mensagem = `Erro VPS ${vpsRes.status}`
+        try { mensagem = (JSON.parse(texto) as { error?: string }).error ?? mensagem } catch {}
+        console.error('[arquiteto] erro VPS:', mensagem)
+        return NextResponse.json({ error: mensagem }, { status: vpsRes.status })
+      }
 
-    const rawText = message.content
-      .filter((b) => b.type === 'text')
-      .map((b) => (b as { type: 'text'; text: string }).text)
-      .join('')
-
-    // Diagnóstico — visível nos logs do Vercel
-    console.log('[arquiteto] rawText (500 chars):', rawText.slice(0, 500))
-
-    let campos: Record<string, string>
-    try {
-      campos = parseFields(rawText)
-    } catch (parseErr) {
-      console.error('[arquiteto] parseFields falhou. rawText completo:', rawText)
-      const msg = parseErr instanceof Error ? parseErr.message : 'Erro ao parsear resposta'
-      return NextResponse.json({ error: msg }, { status: 500 })
+      // Repassa JSON da VPS diretamente
+      return new NextResponse(texto, {
+        status:  200,
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
 
-    console.log('[arquiteto] campos extraídos:', Object.keys(campos))
-
-    return NextResponse.json(parseCamposArquitetura(campos))
+    // ── Fallback: executa inline (dev local / VPS não configurada) ──────────
+    console.log('[arquiteto] modo inline (sem VPS)')
+    return await executarInline(rascunho)
 
   } catch (err: unknown) {
     console.error('[arquiteto]', err)
