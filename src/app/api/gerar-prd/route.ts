@@ -456,17 +456,21 @@ export async function POST(req: NextRequest) {
 
     // ── Call 1 — Núcleo: PRD.md + CLAUDE.md + PLAN.md ──────────────────────
     // Orçamento: 38s. Sem estes 3 arquivos não há produto mínimo → erro 500.
+    const t1 = Date.now()
+    console.log('[gerar-prd] call 1 start')
     const msg1 = await anthropic.messages.create(
       {
         model:      'claude-sonnet-4-5',
-        max_tokens: 4096,
+        max_tokens: 3000,
         system:     SISTEMA,
         messages:   [{ role: 'user', content: buildPromptNucleo(rascunho, arquitetura) }],
       },
       { timeout: 38_000 },
     )
+    console.log(`[gerar-prd] call 1 ok (${Date.now() - t1}ms)`)
 
     const arquivosCore = parseArquivos(extrairTexto(msg1.content as Array<{ type: string; text?: string }>))
+    console.log('[gerar-prd] call 1 arquivos:', Object.keys(arquivosCore))
 
     if (Object.keys(arquivosCore).length === 0) {
       console.error('[gerar-prd] call 1 parser vazio')
@@ -479,15 +483,18 @@ export async function POST(req: NextRequest) {
     // ── Call 2 — Config: .env + .gitignore + README + COMO_USAR + openclaw/ ─
     // Orçamento: 16s. Se falhar → retorna os arquivos do call 1 com aviso.
     try {
+      const t2 = Date.now()
+      console.log('[gerar-prd] call 2 start')
       const msg2 = await anthropic.messages.create(
         {
           model:      'claude-sonnet-4-5',
-          max_tokens: 4096,
+          max_tokens: 2000,
           system:     SISTEMA,
           messages:   [{ role: 'user', content: buildPromptConfig(rascunho, arquitetura) }],
         },
         { timeout: 16_000 },
       )
+      console.log(`[gerar-prd] call 2 ok (${Date.now() - t2}ms)`)
 
       const arquivosConfig = parseArquivos(extrairTexto(msg2.content as Array<{ type: string; text?: string }>))
       const arquivos       = { ...arquivosCore, ...arquivosConfig }

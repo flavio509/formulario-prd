@@ -62,6 +62,20 @@ export default function GerarPage() {
       body:    JSON.stringify({ rascunho, arquitetura }),
     })
       .then(async (res) => {
+        // Trata erros HTTP antes de tentar JSON.parse —
+        // evita "Unexpected token" quando Vercel retorna HTML/texto em 504/524.
+        if (!res.ok) {
+          let mensagem = `Erro HTTP ${res.status}`
+          try {
+            const errData = await res.json() as { error?: string }
+            mensagem = errData.error ?? mensagem
+          } catch {
+            const texto = await res.text()
+            mensagem = texto.slice(0, 300) || mensagem
+          }
+          throw new Error(mensagem)
+        }
+
         const data = await res.json() as {
           arquivos?: Record<string, string>
           titulo?:   string
@@ -69,7 +83,7 @@ export default function GerarPage() {
           aviso?:    string
           error?:    string
         }
-        if (!res.ok || data.error) throw new Error(data.error ?? `HTTP ${res.status}`)
+        if (data.error) throw new Error(data.error)
         if (!data.arquivos || Object.keys(data.arquivos).length === 0) {
           throw new Error('Nenhum arquivo foi gerado. Tente novamente.')
         }
