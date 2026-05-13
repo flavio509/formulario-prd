@@ -4,6 +4,13 @@ import type { RascunhoPRD, ArquiteturaPRD } from '@/types/prd'
 
 export const maxDuration = 60
 
+// ─── Tipos SSE ────────────────────────────────────────────────────────────────
+
+type SSEData =
+  | { type: 'progress'; percent: number; status: string }
+  | { type: 'done'; arquivos: Record<string, string>; titulo: string; parcial: boolean; aviso?: string }
+  | { type: 'error'; message: string }
+
 // ─── Parser de delimitadores ──────────────────────────────────────────────────
 
 function parseArquivos(texto: string): Record<string, string> {
@@ -16,6 +23,15 @@ function parseArquivos(texto: string): Record<string, string> {
     if (nome && conteudo) arquivos[nome] = conteudo
   }
   return arquivos
+}
+
+// ─── Status a partir do texto acumulado (detecta arquivo ativo) ───────────────
+
+function statusFromText(text: string): string {
+  if (text.includes('===FILE: PLAN.md==='))   return 'Redigindo PLAN.md...'
+  if (text.includes('===FILE: CLAUDE.md===')) return 'Redigindo CLAUDE.md...'
+  if (text.includes('===FILE: PRD.md==='))    return 'Redigindo PRD.md...'
+  return 'Analisando o projeto...'
 }
 
 // ─── System prompt (compartilhado pelos 2 calls) ──────────────────────────────
@@ -432,90 +448,129 @@ ARQUIVO 9: openclaw/openclaw.json.example
 Gere todos os arquivos acima agora, usando os delimitadores ===FILE: === / ===END=== exatamente.`
 }
 
-// ─── Extrai texto do response Anthropic ──────────────────────────────────────
-
-function extrairTexto(content: Array<{ type: string; text?: string }>): string {
-  return content
-    .filter((b) => b.type === 'text')
-    .map((b) => b.text ?? '')
-    .join('')
-}
-
-// ─── Handler principal — 2 calls em sequência ────────────────────────────────
+// ─── Handler principal — streaming SSE ───────────────────────────────────────
 
 export async function POST(req: NextRequest) {
+  // Lê o body ANTES de criar o stream (closure segura)
+  let rascunho: RascunhoPRD
+  let arquitetura: ArquiteturaPRD
+
   try {
     const body = await req.json() as { rascunho: RascunhoPRD; arquitetura: ArquiteturaPRD }
-    const { rascunho, arquitetura } = body
-
-    if (!rascunho?.titulo || !arquitetura?.tipo_projeto) {
-      return NextResponse.json({ error: 'Rascunho ou arquitetura não informados' }, { status: 400 })
-    }
-
-    const anthropic = getAnthropicClient()
-
-    // ── Call 1 — Núcleo: PRD.md + CLAUDE.md + PLAN.md ──────────────────────
-    // Orçamento: 38s. Sem estes 3 arquivos não há produto mínimo → erro 500.
-    const t1 = Date.now()
-    console.log('[gerar-prd] call 1 start')
-    const msg1 = await anthropic.messages.create(
-      {
-        model:      'claude-sonnet-4-5',
-        max_tokens: 3000,
-        system:     SISTEMA,
-        messages:   [{ role: 'user', content: buildPromptNucleo(rascunho, arquitetura) }],
-      },
-      { timeout: 38_000 },
-    )
-    console.log(`[gerar-prd] call 1 ok (${Date.now() - t1}ms)`)
-
-    const arquivosCore = parseArquivos(extrairTexto(msg1.content as Array<{ type: string; text?: string }>))
-    console.log('[gerar-prd] call 1 arquivos:', Object.keys(arquivosCore))
-
-    if (Object.keys(arquivosCore).length === 0) {
-      console.error('[gerar-prd] call 1 parser vazio')
-      return NextResponse.json(
-        { error: 'Não foi possível gerar os arquivos principais. Tente novamente.' },
-        { status: 500 },
-      )
-    }
-
-    // ── Call 2 — Config: .env + .gitignore + README + COMO_USAR + openclaw/ ─
-    // Orçamento: 16s. Se falhar → retorna os arquivos do call 1 com aviso.
-    try {
-      const t2 = Date.now()
-      console.log('[gerar-prd] call 2 start')
-      const msg2 = await anthropic.messages.create(
-        {
-          model:      'claude-sonnet-4-5',
-          max_tokens: 2000,
-          system:     SISTEMA,
-          messages:   [{ role: 'user', content: buildPromptConfig(rascunho, arquitetura) }],
-        },
-        { timeout: 16_000 },
-      )
-      console.log(`[gerar-prd] call 2 ok (${Date.now() - t2}ms)`)
-
-      const arquivosConfig = parseArquivos(extrairTexto(msg2.content as Array<{ type: string; text?: string }>))
-      const arquivos       = { ...arquivosCore, ...arquivosConfig }
-
-      return NextResponse.json({ arquivos, titulo: rascunho.titulo, parcial: false })
-
-    } catch (err2) {
-      // Call 2 falhou (timeout ou erro) — retorna call 1 com flag parcial
-      console.warn('[gerar-prd] call 2 falhou, retornando parcial:', err2 instanceof Error ? err2.message : err2)
-
-      return NextResponse.json({
-        arquivos: arquivosCore,
-        titulo:   rascunho.titulo,
-        parcial:  true,
-        aviso:    'PRD.md, CLAUDE.md e PLAN.md foram gerados com sucesso. Os arquivos de configuração (.env.example, .gitignore, README.md, COMO_USAR.md) não foram incluídos por timeout — regenere ou crie manualmente.',
-      })
-    }
-
-  } catch (err: unknown) {
-    console.error('[gerar-prd]', err)
-    const msg = err instanceof Error ? err.message : 'Erro interno'
-    return NextResponse.json({ error: msg }, { status: 500 })
+    rascunho   = body.rascunho
+    arquitetura = body.arquitetura
+  } catch {
+    return NextResponse.json({ error: 'Body inválido' }, { status: 400 })
   }
+
+  if (!rascunho?.titulo || !arquitetura?.tipo_projeto) {
+    return NextResponse.json({ error: 'Rascunho ou arquitetura não informados' }, { status: 400 })
+  }
+
+  const encoder = new TextEncoder()
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      const send = (data: SSEData) =>
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`))
+
+      try {
+        const client = getAnthropicClient()
+
+        // ── Call 1 — PRD.md + CLAUDE.md + PLAN.md ──────────────────────────
+        send({ type: 'progress', percent: 5, status: 'Analisando o projeto...' })
+
+        let rawText1 = ''
+        let tokens1  = 0
+
+        const apiStream1 = client.messages.stream({
+          model:      'claude-sonnet-4-5',
+          max_tokens: 3000,
+          system:     SISTEMA,
+          messages:   [{ role: 'user', content: buildPromptNucleo(rascunho, arquitetura) }],
+        })
+
+        for await (const event of apiStream1) {
+          if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+            rawText1 += event.delta.text
+            tokens1++
+            // Emite progresso a cada 80 tokens (~1-2s)
+            if (tokens1 % 80 === 0) {
+              const pct = Math.min(48, 5 + Math.floor((tokens1 / 3000) * 45))
+              send({ type: 'progress', percent: pct, status: statusFromText(rawText1) })
+            }
+          }
+        }
+
+        send({ type: 'progress', percent: 50, status: 'Processando documentos gerados...' })
+
+        const arquivosCore = parseArquivos(rawText1)
+        console.log('[gerar-prd] call 1 arquivos:', Object.keys(arquivosCore))
+
+        if (Object.keys(arquivosCore).length === 0) {
+          console.error('[gerar-prd] call 1 parser vazio. rawText1 (500):', rawText1.slice(0, 500))
+          send({ type: 'error', message: 'Não foi possível gerar os arquivos principais. Tente novamente.' })
+          return
+        }
+
+        // ── Call 2 — .env + .gitignore + README + COMO_USAR + openclaw/ ────
+        send({ type: 'progress', percent: 55, status: 'Gerando arquivos de configuração...' })
+
+        try {
+          let rawText2 = ''
+          let tokens2  = 0
+
+          const apiStream2 = client.messages.stream({
+            model:      'claude-sonnet-4-5',
+            max_tokens: 2000,
+            system:     SISTEMA,
+            messages:   [{ role: 'user', content: buildPromptConfig(rascunho, arquitetura) }],
+          })
+
+          for await (const event of apiStream2) {
+            if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+              rawText2 += event.delta.text
+              tokens2++
+              if (tokens2 % 60 === 0) {
+                const pct = Math.min(95, 55 + Math.floor((tokens2 / 2000) * 40))
+                send({ type: 'progress', percent: pct, status: 'Gerando arquivos de configuração...' })
+              }
+            }
+          }
+
+          const arquivosConfig = parseArquivos(rawText2)
+          const arquivos       = { ...arquivosCore, ...arquivosConfig }
+
+          console.log('[gerar-prd] call 2 arquivos:', Object.keys(arquivosConfig))
+          send({ type: 'done', arquivos, titulo: rascunho.titulo, parcial: false })
+
+        } catch (err2) {
+          // Call 2 falhou (timeout ou erro) — retorna call 1 com flag parcial
+          console.warn('[gerar-prd] call 2 falhou:', err2 instanceof Error ? err2.message : err2)
+          send({
+            type:     'done',
+            arquivos: arquivosCore,
+            titulo:   rascunho.titulo,
+            parcial:  true,
+            aviso:    'PRD.md, CLAUDE.md e PLAN.md foram gerados. Os arquivos de configuração (.env.example, .gitignore, etc.) não foram incluídos por timeout — regenere ou crie manualmente.',
+          })
+        }
+
+      } catch (err) {
+        console.error('[gerar-prd]', err)
+        send({ type: 'error', message: err instanceof Error ? err.message : 'Erro interno' })
+      } finally {
+        controller.close()
+      }
+    },
+  })
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type':      'text/event-stream',
+      'Cache-Control':     'no-cache',
+      'Connection':        'keep-alive',
+      'X-Accel-Buffering': 'no', // desativa buffer do Nginx/Vercel — crítico para streaming real
+    },
+  })
 }

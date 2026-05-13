@@ -7,30 +7,21 @@ import { SESSION_KEYS } from '@/types/prd'
 
 type Estado = 'gerando' | 'erro'
 
-const PASSOS = [
-  { emoji: '✍️', texto: 'Redigindo PRD completo...' },
-  { emoji: '📋', texto: 'Criando CLAUDE.md e PLAN.md...' },
-  { emoji: '⚙️', texto: 'Gerando arquivos de configuração...' },
-  { emoji: '📦', texto: 'Preparando pacote final...' },
-]
+type SSEData =
+  | { type: 'progress'; percent: number; status: string }
+  | { type: 'done'; arquivos: Record<string, string>; titulo: string; parcial: boolean; aviso?: string }
+  | { type: 'error'; message: string }
 
 export default function GerarPage() {
   const router = useRouter()
 
-  const [passo, setPasso] = useState(0)
-  const [estado, setEstado] = useState<Estado>('gerando')
-  const [erro, setErro]     = useState('')
+  const [estado,      setEstado]      = useState<Estado>('gerando')
+  const [erro,        setErro]        = useState('')
+  const [progresso,   setProgresso]   = useState(0)
+  const [statusTexto, setStatusTexto] = useState('Iniciando geração...')
 
   const chamouRef = useRef(false)
 
-  // Animação de passos
-  useEffect(() => {
-    if (estado !== 'gerando') return
-    const id = setInterval(() => setPasso((p) => (p + 1) % PASSOS.length), 4_000)
-    return () => clearInterval(id)
-  }, [estado])
-
-  // Chama a API de geração
   useEffect(() => {
     if (chamouRef.current) return
     chamouRef.current = true
@@ -56,51 +47,79 @@ export default function GerarPage() {
       return
     }
 
-    fetch('/api/gerar-prd', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ rascunho, arquitetura }),
+    async function gerarPRD() {
+      const res = await fetch('/api/gerar-prd', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ rascunho, arquitetura }),
+      })
+
+      // Erros HTTP antes do stream (400 de validação, etc.)
+      // Body lido UMA só vez como texto para evitar "stream already read"
+      if (!res.ok || !res.body) {
+        const texto = await res.text()
+        let mensagem = `Erro HTTP ${res.status}`
+        try { mensagem = (JSON.parse(texto) as { error?: string }).error ?? mensagem } catch {}
+        if (mensagem === `Erro HTTP ${res.status}`) mensagem = texto.slice(0, 300) || mensagem
+        throw new Error(mensagem)
+      }
+
+      const reader  = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      // Lê o stream de SSE progressivamente
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+
+        // Processa todos os eventos SSE completos (separados por \n\n)
+        const eventos = buffer.split('\n\n')
+        buffer = eventos.pop() ?? '' // último fragmento ainda incompleto
+
+        for (const evento of eventos) {
+          const linha = evento.trim()
+          if (!linha.startsWith('data: ')) continue
+
+          let data: SSEData
+          try {
+            data = JSON.parse(linha.slice(6)) as SSEData
+          } catch {
+            continue // evento malformado — ignora silenciosamente
+          }
+
+          if (data.type === 'progress') {
+            setProgresso(data.percent)
+            setStatusTexto(data.status)
+
+          } else if (data.type === 'done') {
+            setProgresso(100)
+            sessionStorage.setItem(SESSION_KEYS.RESULTADO, JSON.stringify({
+              arquivos: data.arquivos,
+              titulo:   data.titulo,
+              parcial:  data.parcial,
+              aviso:    data.aviso ?? null,
+            }))
+            sessionStorage.setItem(SESSION_KEYS.STATUS, 'gerado')
+            router.push('/resultado')
+            return
+
+          } else if (data.type === 'error') {
+            throw new Error(data.message)
+          }
+        }
+      }
+
+      // Stream fechado sem evento 'done' — função cortada pelo Vercel antes de concluir
+      throw new Error('A geração foi interrompida antes de concluir. Tente novamente.')
+    }
+
+    gerarPRD().catch((err: unknown) => {
+      setErro(err instanceof Error ? err.message : 'Erro desconhecido ao gerar o PRD.')
+      setEstado('erro')
     })
-      .then(async (res) => {
-        // Trata erros HTTP antes de tentar JSON.parse —
-        // evita "Unexpected token" quando Vercel retorna HTML/texto em 504/524.
-        if (!res.ok) {
-          // Lê o body UMA só vez como texto — stream não pode ser consumido duas vezes.
-          // Se for JSON estruturado ({ error: "..." }) extrai a mensagem; caso contrário
-          // usa o texto bruto (ex: HTML de timeout do Vercel), truncado para exibição.
-          const texto = await res.text()
-          let mensagem = `Erro HTTP ${res.status}`
-          try { mensagem = (JSON.parse(texto) as { error?: string }).error ?? mensagem } catch {}
-          if (mensagem === `Erro HTTP ${res.status}`) mensagem = texto.slice(0, 300) || mensagem
-          throw new Error(mensagem)
-        }
-
-        const data = await res.json() as {
-          arquivos?: Record<string, string>
-          titulo?:   string
-          parcial?:  boolean
-          aviso?:    string
-          error?:    string
-        }
-        if (data.error) throw new Error(data.error)
-        if (!data.arquivos || Object.keys(data.arquivos).length === 0) {
-          throw new Error('Nenhum arquivo foi gerado. Tente novamente.')
-        }
-
-        sessionStorage.setItem(SESSION_KEYS.RESULTADO, JSON.stringify({
-          arquivos: data.arquivos,
-          titulo:   data.titulo ?? rascunho.titulo,
-          parcial:  data.parcial ?? false,
-          aviso:    data.aviso   ?? null,
-        }))
-        sessionStorage.setItem(SESSION_KEYS.STATUS, 'gerado')
-
-        router.push('/resultado')
-      })
-      .catch((err: unknown) => {
-        setErro(err instanceof Error ? err.message : 'Erro desconhecido ao gerar o PRD.')
-        setEstado('erro')
-      })
   }, [router])
 
   return (
@@ -108,25 +127,28 @@ export default function GerarPage() {
 
       {/* Gerando */}
       {estado === 'gerando' && (
-        <div className="text-center max-w-md">
-          <div className="text-5xl mb-6 animate-pulse">{PASSOS[passo].emoji}</div>
+        <div className="text-center max-w-sm w-full">
+          <div className="text-5xl mb-6">⚙️</div>
           <h1 className="text-xl font-bold text-zinc-100 mb-2">Gerando seu PRD</h1>
-          <p className="text-zinc-300 font-medium mb-1">{PASSOS[passo].texto}</p>
-          <p className="text-xs text-zinc-600 mb-8">
-            O Claude está redigindo todos os arquivos do projeto...
+          <p className="text-sm text-zinc-500 mb-8">
+            O Claude está redigindo os arquivos do projeto em tempo real.
           </p>
 
-          {/* Progress dots */}
-          <div className="flex justify-center gap-1.5">
-            {PASSOS.map((_, i) => (
+          {/* Barra de progresso */}
+          <div className="mb-6">
+            <div className="flex justify-between text-xs text-zinc-500 mb-2">
+              <span className="truncate max-w-[210px] text-left">{statusTexto}</span>
+              <span className="flex-shrink-0 ml-2 tabular-nums">{progresso}%</span>
+            </div>
+            <div className="w-full bg-zinc-800 rounded-full h-1.5 overflow-hidden">
               <div
-                key={i}
-                className={`w-1.5 h-1.5 rounded-full transition-all duration-500 ${
-                  i === passo ? 'bg-blue-400 scale-125' : 'bg-zinc-700'
-                }`}
+                className="bg-blue-500 h-1.5 rounded-full transition-all duration-500 ease-out"
+                style={{ width: `${progresso}%` }}
               />
-            ))}
+            </div>
           </div>
+
+          <p className="text-xs text-zinc-700">Pode levar até 60 segundos...</p>
         </div>
       )}
 
@@ -149,7 +171,8 @@ export default function GerarPage() {
                 chamouRef.current = false
                 setEstado('gerando')
                 setErro('')
-                setPasso(0)
+                setProgresso(0)
+                setStatusTexto('Iniciando geração...')
               }}
               className="inline-block px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-500 transition-colors"
             >
