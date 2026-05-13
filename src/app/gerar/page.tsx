@@ -65,6 +65,8 @@ export default function GerarPage() {
         const data = await res.json() as {
           arquivos?: Record<string, string>
           titulo?:   string
+          parcial?:  boolean
+          aviso?:    string
           error?:    string
         }
         if (!res.ok || data.error) throw new Error(data.error ?? `HTTP ${res.status}`)
@@ -75,6 +77,8 @@ export default function GerarPage() {
         sessionStorage.setItem(SESSION_KEYS.RESULTADO, JSON.stringify({
           arquivos: data.arquivos,
           titulo:   data.titulo ?? rascunho.titulo,
+          parcial:  data.parcial ?? false,
+          aviso:    data.aviso   ?? null,
         }))
         sessionStorage.setItem(SESSION_KEYS.STATUS, 'gerado')
 

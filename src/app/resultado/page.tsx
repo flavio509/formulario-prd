@@ -7,6 +7,8 @@ import { SESSION_KEYS } from '@/types/prd'
 interface Resultado {
   arquivos: Record<string, string>
   titulo:   string
+  parcial?: boolean
+  aviso?:   string | null
 }
 
 function formatarTamanho(conteudo: string): string {
@@ -93,7 +95,7 @@ export default function ResultadoPage() {
     )
   }
 
-  const { arquivos, titulo } = resultado
+  const { arquivos, titulo, parcial, aviso } = resultado
   const { principais, openclaw, config } = agruparArquivos(arquivos)
   const totalArquivos = Object.keys(arquivos).length
   const conteudoAtivo = arquivos[arquivoAtivo] ?? ''
@@ -113,6 +115,19 @@ export default function ResultadoPage() {
       </div>
 
       <div className="max-w-3xl mx-auto space-y-6">
+
+        {/* Banner de geração parcial */}
+        {parcial && (
+          <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 flex items-start gap-3">
+            <span className="text-amber-400 text-lg flex-shrink-0">⚠️</span>
+            <div>
+              <p className="text-sm font-semibold text-amber-400 mb-0.5">Geração parcial</p>
+              <p className="text-xs text-amber-300/80 leading-relaxed">
+                {aviso ?? 'PRD.md, CLAUDE.md e PLAN.md foram gerados. Os arquivos de configuração (.env.example, .gitignore, etc.) não foram incluídos por timeout — tente baixar e gerar novamente se precisar deles.'}
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Cabeçalho de sucesso */}
         <div className="p-5 rounded-2xl border border-emerald-500/20 bg-emerald-500/5">
