@@ -504,11 +504,18 @@ export async function POST(req: NextRequest) {
 
         send({ type: 'progress', percent: 50, status: 'Processando documentos gerados...' })
 
+        // ── Diagnóstico do parser ───────────────────────────────────────────
+        console.log('[gerar-prd] rawText1 length:', rawText1.length)
+        console.log('[gerar-prd] primeiro char code:', rawText1.charCodeAt(0))
+        console.log('[gerar-prd] chars em volta do FILE:', JSON.stringify(rawText1.substring(0, 20)))
+        console.log('[gerar-prd] matches ===FILE::', rawText1.match(/===FILE:/g)?.length)
+        console.log('[gerar-prd] matches ===END===:', rawText1.match(/===END===/g)?.length)
+
         const arquivosCore = parseArquivos(rawText1)
         console.log('[gerar-prd] call 1 arquivos:', Object.keys(arquivosCore))
 
         if (Object.keys(arquivosCore).length === 0) {
-          console.error('[gerar-prd] call 1 parser vazio. rawText1 (500):', rawText1.slice(0, 500))
+          console.error('[gerar-prd] call 1 parser vazio. rawText1 (2000):', rawText1.slice(0, 2000))
           send({ type: 'error', message: 'Não foi possível gerar os arquivos principais. Tente novamente.' })
           return
         }
