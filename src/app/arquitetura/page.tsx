@@ -157,7 +157,7 @@ export default function ArquiteturaPage() {
               <div
                 key={i}
                 className={`w-1.5 h-1.5 rounded-full transition-all duration-500 ${
-                  i === passo ? 'bg-blue-400 scale-125' : 'bg-zinc-700'
+                  i === passo ? 'bg-indigo-400 scale-125' : 'bg-zinc-700'
                 }`}
               />
             ))}
@@ -186,7 +186,7 @@ export default function ArquiteturaPage() {
                 setErro('')
                 setPasso(0)
               }}
-              className="inline-block px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-500 transition-colors"
+              className="inline-block px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-500 transition-colors"
             >
               ↺ Tentar novamente
             </button>

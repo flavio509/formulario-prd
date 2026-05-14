@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { Settings } from 'lucide-react'
 import type { RascunhoPRD, ArquiteturaPRD } from '@/types/prd'
 import { SESSION_KEYS } from '@/types/prd'
 
@@ -146,22 +147,32 @@ export default function GerarPage() {
       {/* Gerando */}
       {estado === 'gerando' && (
         <div className="text-center max-w-sm w-full">
-          <div className="text-5xl mb-6">⚙️</div>
+          {/* Item 8: spinning gear Lucide icon */}
+          <div className="flex justify-center mb-6">
+            <Settings
+              className="w-12 h-12 text-indigo-400"
+              style={{ animation: 'spin 3s linear infinite' }}
+            />
+          </div>
           <h1 className="text-xl font-bold text-zinc-100 mb-2">Gerando seu PRD</h1>
           <p className="text-sm text-zinc-500 mb-8">
             O Claude está redigindo os arquivos do projeto em tempo real.
           </p>
 
-          {/* Barra de progresso */}
+          {/* Item 10: barra de progresso com gradiente + glow */}
           <div className="mb-6">
             <div className="flex justify-between text-xs text-zinc-500 mb-2">
               <span className="truncate max-w-[210px] text-left">{statusTexto}</span>
               <span className="flex-shrink-0 ml-2 tabular-nums">{progresso}%</span>
             </div>
-            <div className="w-full bg-zinc-800 rounded-full h-1.5 overflow-hidden">
+            <div className="w-full bg-zinc-800 rounded-full overflow-hidden" style={{ height: '6px' }}>
               <div
-                className="bg-blue-500 h-1.5 rounded-full transition-all duration-500 ease-out"
-                style={{ width: `${progresso}%` }}
+                className="h-full rounded-full transition-all duration-500 ease-out"
+                style={{
+                  width: `${progresso}%`,
+                  background: 'linear-gradient(90deg, #6366F1, #8B5CF6)',
+                  boxShadow: '0 0 8px rgba(99,102,241,0.6)',
+                }}
               />
             </div>
           </div>
@@ -200,7 +211,7 @@ export default function GerarPage() {
                 setStatusTexto('Iniciando geração...')
                 setTempoSegundos(0)
               }}
-              className="inline-block px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-500 transition-colors"
+              className="inline-block px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-500 transition-colors"
             >
               ↺ Tentar novamente
             </button>

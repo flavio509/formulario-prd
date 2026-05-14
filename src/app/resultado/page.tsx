@@ -87,7 +87,7 @@ export default function ResultadoPage() {
           <p className="text-sm text-zinc-400 mb-6">{erro}</p>
           <a
             href="/arquitetura"
-            className="inline-block px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-500 transition-colors"
+            className="inline-block px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-500 transition-colors"
           >
             ← Voltar à arquitetura
           </a>
@@ -279,7 +279,7 @@ export default function ResultadoPage() {
         {tipoUso === 'claude-code' ? (
           <div className="p-4 rounded-xl border border-zinc-700/50 bg-zinc-900/30 text-sm text-zinc-400 leading-relaxed">
             💡 <strong className="text-zinc-300">Como usar:</strong> Extraia o ZIP, abra o terminal na pasta e
-            rode <code className="text-blue-400 text-xs bg-zinc-800 px-1.5 py-0.5 rounded">claude</code>.
+            rode <code className="text-indigo-400 text-xs bg-zinc-800 px-1.5 py-0.5 rounded">claude</code>.
             Cole o conteúdo do <strong className="text-zinc-300">CLAUDE.md</strong> na primeira mensagem
             e depois execute o <strong className="text-zinc-300">PLAN.md</strong> milestone por milestone.
           </div>
@@ -325,7 +325,7 @@ export default function ResultadoPage() {
             titulo={titulo}
             arquivos={arquivos}
             label="⬇️ Baixar ZIP novamente"
-            className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-500 transition-colors flex items-center justify-center gap-2"
+            className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-500 transition-colors flex items-center justify-center gap-2"
           />
         </div>
       </div>

@@ -87,7 +87,7 @@ export default function UploadDocumentos({ onSubmit, loading = false }: Props) {
         onClick={() => inputRef.current?.click()}
         className={`relative flex flex-col items-center justify-center gap-3 p-10 rounded-2xl border-2 border-dashed cursor-pointer transition-all ${
           arrastando
-            ? 'border-blue-500 bg-blue-500/5'
+            ? 'border-indigo-500 bg-indigo-500/5'
             : 'border-zinc-700 bg-zinc-900/40 hover:border-zinc-600 hover:bg-zinc-900/60'
         }`}
       >
@@ -163,7 +163,7 @@ export default function UploadDocumentos({ onSubmit, loading = false }: Props) {
         type="button"
         onClick={() => onSubmit(arquivos)}
         disabled={arquivos.length === 0 || loading}
-        className="w-full py-3 rounded-xl font-semibold text-sm bg-blue-600 text-white hover:bg-blue-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        className="w-full py-3 rounded-xl font-semibold text-sm bg-indigo-600 text-white hover:bg-indigo-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
         {loading ? (
           <>

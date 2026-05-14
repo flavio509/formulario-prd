@@ -14,8 +14,8 @@ interface Props {
 
 const TIPO_CORES: Record<number, string> = {
   1: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
-  2: 'bg-blue-500/15 text-blue-400 border-blue-500/30',
-  3: 'bg-blue-500/15 text-blue-400 border-blue-500/30',
+  2: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/30',
+  3: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/30',
   4: 'bg-violet-500/15 text-violet-400 border-violet-500/30',
   5: 'bg-violet-500/15 text-violet-400 border-violet-500/30',
   6: 'bg-rose-500/15 text-rose-400 border-rose-500/30',
@@ -256,7 +256,7 @@ export default function ArquiteturaCard({ arquitetura, rascunho, onAprovar, onAj
           type="button"
           onClick={onAprovar}
           disabled={loading}
-          className="px-8 py-2.5 rounded-xl font-semibold text-sm bg-blue-600 text-white hover:bg-blue-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+          className="px-8 py-2.5 rounded-xl font-semibold text-sm bg-indigo-600 text-white hover:bg-indigo-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
         >
           {loading ? (
             <><span className="animate-spin">⏳</span> Gerando PRD...</>

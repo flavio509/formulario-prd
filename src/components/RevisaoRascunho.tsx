@@ -25,7 +25,7 @@ function SecaoTexto({
         value={value ?? ''}
         onChange={(e) => onChange(e.target.value)}
         rows={rows}
-        className="w-full px-4 py-3 rounded-xl border border-zinc-700 bg-zinc-900/60 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/70 resize-none transition-colors leading-relaxed"
+        className="w-full px-4 py-3 rounded-xl border border-zinc-700 bg-zinc-900/60 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-indigo-500/70 resize-none transition-colors leading-relaxed"
       />
     </div>
   )
@@ -63,7 +63,7 @@ function SecaoLista({
               rows={2}
               value={item}
               onChange={(e) => updateItem(i, e.target.value)}
-              className="flex-1 px-3 py-2 rounded-lg border border-zinc-700 bg-zinc-900/60 text-sm text-zinc-200 focus:outline-none focus:border-blue-500/70 transition-colors resize-none leading-snug"
+              className="flex-1 px-3 py-2 rounded-lg border border-zinc-700 bg-zinc-900/60 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500/70 transition-colors resize-none leading-snug"
             />
             <button
               type="button"
@@ -79,7 +79,7 @@ function SecaoLista({
       <button
         type="button"
         onClick={addItem}
-        className="text-xs text-blue-400 hover:text-blue-300 transition-colors mt-1"
+        className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors mt-1"
       >
         + Adicionar item
       </button>
@@ -121,7 +121,7 @@ export default function RevisaoRascunho({ rascunho, onConfirmar, loading = false
           type="text"
           value={data.titulo ?? ''}
           onChange={(e) => set('titulo', e.target.value)}
-          className="w-full px-4 py-3 rounded-xl border border-zinc-700 bg-zinc-900/60 text-base font-semibold text-zinc-100 focus:outline-none focus:border-blue-500/70 transition-colors"
+          className="w-full px-4 py-3 rounded-xl border border-zinc-700 bg-zinc-900/60 text-base font-semibold text-zinc-100 focus:outline-none focus:border-indigo-500/70 transition-colors"
         />
       </div>
 
@@ -208,7 +208,7 @@ export default function RevisaoRascunho({ rascunho, onConfirmar, loading = false
           type="button"
           onClick={() => onConfirmar(data)}
           disabled={loading || !(data.titulo ?? '').trim()}
-          className="px-8 py-3 rounded-xl font-semibold text-sm bg-blue-600 text-white hover:bg-blue-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+          className="px-8 py-3 rounded-xl font-semibold text-sm bg-indigo-600 text-white hover:bg-indigo-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
         >
           {loading ? (
             <>

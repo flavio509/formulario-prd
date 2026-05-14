@@ -104,7 +104,7 @@ export default function RascunhoPage() {
           </p>
           <a
             href="/formulario"
-            className="inline-block px-6 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-500 transition-colors"
+            className="inline-block px-6 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-500 transition-colors"
           >
             ← Voltar ao formulário
           </a>

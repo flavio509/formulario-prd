@@ -17,12 +17,12 @@ function OpcaoSimples({
       onClick={() => onSelect(value)}
       className={`w-full text-left px-4 py-3 rounded-xl border transition-all text-sm ${
         selected
-          ? 'border-blue-500 bg-blue-500/10 text-blue-300 font-medium'
+          ? 'border-indigo-500 bg-indigo-500/10 text-indigo-300 font-medium'
           : 'border-zinc-700 bg-zinc-900/60 text-zinc-300 hover:border-zinc-600 hover:bg-zinc-800/60'
       }`}
     >
       <span className={`inline-block w-3.5 h-3.5 rounded-full border mr-2.5 align-middle transition-colors ${
-        selected ? 'bg-blue-500 border-blue-500' : 'border-zinc-600'
+        selected ? 'bg-indigo-500 border-indigo-500' : 'border-zinc-600'
       }`} />
       {children}
     </button>
@@ -40,12 +40,12 @@ function OpcaoMultipla({
       onClick={() => onToggle(value)}
       className={`w-full text-left px-4 py-3 rounded-xl border transition-all text-sm ${
         selected
-          ? 'border-blue-500 bg-blue-500/10 text-blue-300 font-medium'
+          ? 'border-indigo-500 bg-indigo-500/10 text-indigo-300 font-medium'
           : 'border-zinc-700 bg-zinc-900/60 text-zinc-300 hover:border-zinc-600 hover:bg-zinc-800/60'
       }`}
     >
       <span className={`inline-flex items-center justify-center w-3.5 h-3.5 rounded border mr-2.5 align-middle transition-colors flex-shrink-0 ${
-        selected ? 'bg-blue-500 border-blue-500' : 'border-zinc-600'
+        selected ? 'bg-indigo-500 border-indigo-500' : 'border-zinc-600'
       }`}>
         {selected && <span className="text-white text-[9px] leading-none">✓</span>}
       </span>
@@ -76,7 +76,7 @@ function Textarea({
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       rows={rows}
-      className="w-full px-4 py-3 rounded-xl border border-zinc-700 bg-zinc-900/60 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/70 resize-none transition-colors"
+      className="w-full px-4 py-3 rounded-xl border border-zinc-700 bg-zinc-900/60 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-indigo-500/70 resize-none transition-colors"
     />
   )
 }
@@ -178,7 +178,7 @@ export default function FormularioGuiado({ onSubmit, loading = false }: Props) {
         </div>
         <div className="h-1 bg-zinc-800 rounded-full overflow-hidden">
           <div
-            className="h-full bg-blue-500 rounded-full transition-all duration-500"
+            className="h-full bg-indigo-500 rounded-full transition-all duration-500"
             style={{ width: `${progressPct}%` }}
           />
         </div>
@@ -222,7 +222,7 @@ export default function FormularioGuiado({ onSubmit, loading = false }: Props) {
           type="button"
           onClick={avancar}
           disabled={!podeAvancar() || loading}
-          className="px-6 py-2.5 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+          className="px-6 py-2.5 rounded-xl text-sm font-semibold bg-indigo-600 text-white hover:bg-indigo-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
         >
           {loading ? (
             <>
@@ -840,7 +840,7 @@ function Bloco8({ data, set }: BlocoProps) {
         />
       </div>
 
-      <div className="p-4 rounded-xl border border-blue-500/20 bg-blue-500/5 text-sm text-blue-300 leading-relaxed">
+      <div className="p-4 rounded-xl border border-indigo-500/20 bg-indigo-500/5 text-sm text-indigo-300 leading-relaxed">
         🏗️ <strong>Próximo passo:</strong> O Agente Arquiteto vai analisar suas respostas, pesquisar
         as melhores ferramentas e propor a arquitetura ideal para o seu projeto — sem envolver você.
         Você vai revisar e aprovar antes do PRD ser gerado.

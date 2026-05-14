@@ -63,7 +63,7 @@ export default function DownloadZip({
       onClick={baixar}
       className={
         className ??
-        'px-8 py-3 rounded-xl font-semibold text-sm bg-blue-600 text-white hover:bg-blue-500 transition-colors flex items-center gap-2'
+        'px-8 py-3 rounded-xl font-semibold text-sm bg-indigo-600 text-white hover:bg-indigo-500 transition-colors flex items-center gap-2'
       }
     >
       {label}

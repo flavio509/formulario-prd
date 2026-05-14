@@ -84,17 +84,17 @@ export default function AudioPage() {
             {/* Linha de progresso */}
             <div className="mt-8 max-w-xs mx-auto">
               <div className="flex items-center justify-between text-xs text-zinc-600 mb-2">
-                <span className={etapa === 'transcrevendo' ? 'text-blue-400' : 'text-zinc-500'}>
+                <span className={etapa === 'transcrevendo' ? 'text-indigo-400' : 'text-zinc-500'}>
                   1. Transcrição
                 </span>
-                <span className={etapa === 'analisando' ? 'text-blue-400' : 'text-zinc-600'}>
+                <span className={etapa === 'analisando' ? 'text-indigo-400' : 'text-zinc-600'}>
                   2. Análise
                 </span>
                 <span className="text-zinc-700">3. Rascunho</span>
               </div>
               <div className="h-1 bg-zinc-800 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-blue-500 rounded-full transition-all duration-1000"
+                  className="h-full bg-indigo-500 rounded-full transition-all duration-1000"
                   style={{ width: etapa === 'transcrevendo' ? '40%' : '75%' }}
                 />
               </div>

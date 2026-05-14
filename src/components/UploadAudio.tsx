@@ -57,7 +57,7 @@ export default function UploadAudio({ onSubmit, loading = false }: Props) {
           arquivo
             ? 'border-zinc-700 bg-zinc-900/40 cursor-default'
             : arrastando
-              ? 'border-blue-500 bg-blue-500/5 cursor-copy'
+              ? 'border-indigo-500 bg-indigo-500/5 cursor-copy'
               : 'border-zinc-700 bg-zinc-900/40 hover:border-zinc-600 hover:bg-zinc-900/60 cursor-pointer'
         }`}
       >
@@ -127,7 +127,7 @@ export default function UploadAudio({ onSubmit, loading = false }: Props) {
         type="button"
         onClick={() => arquivo && onSubmit(arquivo)}
         disabled={!arquivo || loading}
-        className="w-full py-3 rounded-xl font-semibold text-sm bg-blue-600 text-white hover:bg-blue-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        className="w-full py-3 rounded-xl font-semibold text-sm bg-indigo-600 text-white hover:bg-indigo-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
         {loading ? (
           <>
