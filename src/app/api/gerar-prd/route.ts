@@ -291,9 +291,9 @@ NUNCA omita o ===END===. Se estiver próximo do limite de tokens,
 encurte o conteúdo mas SEMPRE inclua o ===END=== no final.`
 }
 
-// ─── Call 4 — .env.example + .gitignore ──────────────────────────────────────
+// ─── Call 4 — .env.example ───────────────────────────────────────────────────
 
-function buildPromptEnvGitignore(rascunho: RascunhoPRD, arquitetura: ArquiteturaPRD): string {
+function buildPromptEnv(rascunho: RascunhoPRD, arquitetura: ArquiteturaPRD): string {
   const ctx = {
     titulo:      rascunho.titulo,
     tipo_numero: arquitetura.tipo_numero,
@@ -305,7 +305,7 @@ function buildPromptEnvGitignore(rascunho: RascunhoPRD, arquitetura: Arquitetura
   return `CONTEXTO DO PROJETO:
 ${JSON.stringify(ctx, null, 2)}
 
-Gere APENAS os 2 arquivos curtos abaixo. São arquivos de configuração — não precisam ser longos.
+Gere APENAS o arquivo abaixo. É um arquivo de configuração — não precisa ser longo.
 
 ──────────────────────────────────────────────────────────────────
 ARQUIVO 1: .env.example
@@ -319,16 +319,36 @@ Todas as variáveis necessárias com comentários. NUNCA coloque valores reais.
 # Descrição — onde obter (ex: dashboard do serviço)
 NOME_DA_VAR=
 
+Gere o arquivo acima agora, usando os delimitadores ===FILE: === / ===END=== exatamente.
+
+CRÍTICO: O arquivo DEVE terminar com ===END=== na própria linha.
+NUNCA omita o ===END===.`
+}
+
+// ─── Call 5 — .gitignore ──────────────────────────────────────────────────────
+
+function buildPromptGitignore(rascunho: RascunhoPRD, arquitetura: ArquiteturaPRD): string {
+  const ctx = {
+    titulo: rascunho.titulo,
+    stack:  arquitetura.stack,
+    deploy: arquitetura.deploy,
+  }
+
+  return `CONTEXTO DO PROJETO:
+${JSON.stringify(ctx, null, 2)}
+
+Gere APENAS o arquivo abaixo. É um arquivo de configuração curto.
+
 ──────────────────────────────────────────────────────────────────
-ARQUIVO 2: .gitignore
+ARQUIVO 1: .gitignore
 Baseado na stack: ${ctx.stack.join(', ')}
 
 [gere .gitignore completo para esta stack, incluindo obrigatoriamente: .env, dependências, builds, OS files, logs, arquivos de IDE]
 
-Gere os 2 arquivos acima agora, usando os delimitadores ===FILE: === / ===END=== exatamente.
+Gere o arquivo acima agora, usando os delimitadores ===FILE: === / ===END=== exatamente.
 
-CRÍTICO: Cada arquivo DEVE terminar com ===END=== na própria linha.
-NUNCA omita o ===END===. Estes são arquivos curtos — inclua ambos completos.`
+CRÍTICO: O arquivo DEVE terminar com ===END=== na própria linha.
+NUNCA omita o ===END===.`
 }
 
 // ─── Call 5 — README.md ───────────────────────────────────────────────────────
@@ -532,27 +552,33 @@ export async function POST(req: NextRequest) {
         try { c3 = await runCall(buildPromptPlan(rascunho, arquitetura), 4096, 'Call 3 (PLAN.md)', 35, 50) }
         catch (e) { console.warn('[gerar-prd] Call 3 falhou:', e instanceof Error ? e.message : e) }
 
-        // ── Call 4 — .env.example + .gitignore ──────────────────────────────
-        send({ type: 'progress', percent: 50, status: 'Gerando .env e .gitignore...' })
+        // ── Call 4 — .env.example ────────────────────────────────────────────
+        send({ type: 'progress', percent: 50, status: 'Gerando .env.example...' })
         let c4: Record<string, string> = {}
-        try { c4 = await runCall(buildPromptEnvGitignore(rascunho, arquitetura), 2048, 'Call 4 (.env+.gitignore)', 50, 65) }
+        try { c4 = await runCall(buildPromptEnv(rascunho, arquitetura), 2048, 'Call 4 (.env.example)', 50, 60) }
         catch (e) { console.warn('[gerar-prd] Call 4 falhou:', e instanceof Error ? e.message : e) }
 
-        // ── Call 5 — README.md ───────────────────────────────────────────────
-        send({ type: 'progress', percent: 65, status: 'Gerando README.md...' })
+        // ── Call 5 — .gitignore ──────────────────────────────────────────────
+        send({ type: 'progress', percent: 60, status: 'Gerando .gitignore...' })
         let c5: Record<string, string> = {}
-        try { c5 = await runCall(buildPromptReadme(rascunho, arquitetura), 2048, 'Call 5 (README.md)', 65, 80) }
+        try { c5 = await runCall(buildPromptGitignore(rascunho, arquitetura), 1024, 'Call 5 (.gitignore)', 60, 68) }
         catch (e) { console.warn('[gerar-prd] Call 5 falhou:', e instanceof Error ? e.message : e) }
 
-        // ── Call 6 — COMO_USAR.md ────────────────────────────────────────────
-        send({ type: 'progress', percent: 80, status: 'Gerando guia de uso...' })
+        // ── Call 6 — README.md ───────────────────────────────────────────────
+        send({ type: 'progress', percent: 68, status: 'Gerando README.md...' })
         let c6: Record<string, string> = {}
-        try { c6 = await runCall(buildPromptComoUsar(rascunho, arquitetura), 2048, 'Call 6 (COMO_USAR.md)', 80, 95) }
+        try { c6 = await runCall(buildPromptReadme(rascunho, arquitetura), 2048, 'Call 6 (README.md)', 68, 82) }
         catch (e) { console.warn('[gerar-prd] Call 6 falhou:', e instanceof Error ? e.message : e) }
 
-        const arquivos = { ...c1, ...c2, ...c3, ...c4, ...c5, ...c6 }
+        // ── Call 7 — COMO_USAR.md ────────────────────────────────────────────
+        send({ type: 'progress', percent: 82, status: 'Gerando guia de uso...' })
+        let c7: Record<string, string> = {}
+        try { c7 = await runCall(buildPromptComoUsar(rascunho, arquitetura), 2048, 'Call 7 (COMO_USAR.md)', 82, 95) }
+        catch (e) { console.warn('[gerar-prd] Call 7 falhou:', e instanceof Error ? e.message : e) }
+
+        const arquivos = { ...c1, ...c2, ...c3, ...c4, ...c5, ...c6, ...c7 }
         const total    = Object.keys(arquivos).length
-        const parcial  = total < 6
+        const parcial  = total < 7
 
         send({
           type:    'done',
@@ -560,7 +586,7 @@ export async function POST(req: NextRequest) {
           titulo:  rascunho.titulo,
           parcial,
           aviso:   parcial
-            ? `${total} de 6 arquivos gerados. Alguns não foram incluídos por timeout — regenere ou crie manualmente.`
+            ? `${total} de 7 arquivos gerados. Alguns não foram incluídos por timeout — regenere ou crie manualmente.`
             : undefined,
         })
 
