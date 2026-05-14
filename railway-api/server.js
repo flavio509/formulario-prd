@@ -466,7 +466,11 @@ ARQUIVO 9: openclaw/openclaw.json.example
 - Inclua: models, channels.telegram, security, cron (heartbeat básico)
 ` : ''}
 
-Gere todos os arquivos acima agora, usando os delimitadores ===FILE: === / ===END=== exatamente.`
+Gere todos os arquivos acima agora, usando os delimitadores ===FILE: === / ===END=== exatamente.
+
+CRÍTICO: Cada arquivo DEVE terminar com ===END=== na própria linha.
+NUNCA omita o ===END===. Se estiver próximo do limite de tokens,
+encurte o conteúdo mas SEMPRE inclua o ===END=== de cada arquivo.`
 }
 
 // ─── Rota principal — POST /gerar-prd ────────────────────────────────────────
@@ -546,7 +550,7 @@ app.post('/gerar-prd', autenticar, async (req, res) => {
 
       const stream2 = client.messages.stream({
         model:      'claude-sonnet-4-5',
-        max_tokens: 2000,
+        max_tokens: 4096,
         system:     SISTEMA,
         messages:   [{ role: 'user', content: buildPromptConfig(rascunho, arquitetura) }],
       })
@@ -563,6 +567,15 @@ app.post('/gerar-prd', autenticar, async (req, res) => {
       }
 
       console.log(`[prd-api] call 2 ok (${Date.now() - t2}ms)`)
+      console.log('[prd-api] call 2 rawText2 length:', rawText2.length)
+      console.log('[prd-api] call 2 matches ===END===:', rawText2.match(/===END===/g)?.length)
+
+      // Fallback: fecha último arquivo se cortado antes do ===END===
+      if (rawText2.includes('===FILE:') && !rawText2.trimEnd().endsWith('===END===')) {
+        console.warn('[prd-api] rawText2 cortado — adicionando ===END=== de fallback')
+        rawText2 += '\n===END==='
+      }
+
       const arquivosConfig = parseArquivos(rawText2)
       const arquivos       = { ...arquivosCore, ...arquivosConfig }
 

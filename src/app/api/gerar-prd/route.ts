@@ -449,7 +449,11 @@ ARQUIVO 9: openclaw/openclaw.json.example
 - Inclua: models, channels.telegram, security, cron (heartbeat básico)
 ` : ''}
 
-Gere todos os arquivos acima agora, usando os delimitadores ===FILE: === / ===END=== exatamente.`
+Gere todos os arquivos acima agora, usando os delimitadores ===FILE: === / ===END=== exatamente.
+
+CRÍTICO: Cada arquivo DEVE terminar com ===END=== na própria linha.
+NUNCA omita o ===END===. Se estiver próximo do limite de tokens,
+encurte o conteúdo mas SEMPRE inclua o ===END=== de cada arquivo.`
 }
 
 // ─── Handler principal — streaming SSE ───────────────────────────────────────
@@ -539,7 +543,7 @@ export async function POST(req: NextRequest) {
 
           const apiStream2 = client.messages.stream({
             model:      'claude-sonnet-4-5',
-            max_tokens: 2000,
+            max_tokens: 4096,
             system:     SISTEMA,
             messages:   [{ role: 'user', content: buildPromptConfig(rascunho, arquitetura) }],
           })
@@ -553,6 +557,16 @@ export async function POST(req: NextRequest) {
                 send({ type: 'progress', percent: pct, status: 'Gerando arquivos de configuração...' })
               }
             }
+          }
+
+          // ── Diagnóstico call 2 ───────────────────────────────────────────
+          console.log('[gerar-prd] call 2 rawText2 length:', rawText2.length)
+          console.log('[gerar-prd] call 2 matches ===END===:', rawText2.match(/===END===/g)?.length)
+
+          // Fallback: fecha último arquivo se cortado antes do ===END===
+          if (rawText2.includes('===FILE:') && !rawText2.trimEnd().endsWith('===END===')) {
+            console.warn('[gerar-prd] rawText2 cortado — adicionando ===END=== de fallback')
+            rawText2 += '\n===END==='
           }
 
           const arquivosConfig = parseArquivos(rawText2)
