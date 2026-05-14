@@ -37,6 +37,7 @@ export default function DownloadZip({
     for (const [caminho, conteudo] of Object.entries(arquivos)) {
       zip.file(caminho, conteudo)
     }
+    console.log('[JSZip] arquivos no ZIP antes de gerar:', Object.keys(zip.files))
 
     const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' })
     const url  = URL.createObjectURL(blob)
