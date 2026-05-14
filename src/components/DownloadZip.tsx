@@ -33,11 +33,14 @@ export default function DownloadZip({
     const JSZip = (await import('jszip')).default
     const zip   = new JSZip()
 
-    console.log('[DownloadZip] arquivos recebidos como prop:', Object.keys(arquivos))
     for (const [caminho, conteudo] of Object.entries(arquivos)) {
-      zip.file(caminho, conteudo)
+      // Dotfiles (.env.example, .gitignore) ficam ocultos no Finder do macOS —
+      // renomeia para nomes visíveis sem perder o conteúdo.
+      const nomeZip = caminho === '.env.example' ? 'env.example'
+                    : caminho === '.gitignore'   ? 'gitignore.txt'
+                    : caminho
+      zip.file(nomeZip, conteudo)
     }
-    console.log('[JSZip] arquivos no ZIP antes de gerar:', Object.keys(zip.files))
 
     const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' })
     const url  = URL.createObjectURL(blob)

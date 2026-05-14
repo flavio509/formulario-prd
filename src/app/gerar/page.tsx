@@ -105,15 +105,12 @@ export default function GerarPage() {
 
           } else if (data.type === 'done') {
             setProgresso(100)
-            console.log('[gerar] arquivos recebidos do SSE:', Object.keys(data.arquivos))
             sessionStorage.setItem(SESSION_KEYS.RESULTADO, JSON.stringify({
               arquivos: data.arquivos,
               titulo:   data.titulo,
               parcial:  data.parcial,
               aviso:    data.aviso ?? null,
             }))
-            const _stored = JSON.parse(sessionStorage.getItem('prd-resultado') || '{}')
-            console.log('[gerar] arquivos.arquivos em sessionStorage:', Object.keys(_stored.arquivos ?? {}))
             sessionStorage.setItem(SESSION_KEYS.STATUS, 'gerado')
             router.push('/resultado')
             return
