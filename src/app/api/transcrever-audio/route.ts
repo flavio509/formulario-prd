@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { put, del } from '@vercel/blob'
 import { getOpenAIClient }    from '@/lib/openai'
 import { getAnthropicClient } from '@/lib/anthropic'
 import { parseFields, toList } from '@/lib/parse-fields'
@@ -93,8 +92,6 @@ ${SCHEMA_CAMPOS}`
 // ─── Handler ──────────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
-  let blobUrl: string | null = null
-
   const contentType = req.headers.get('content-type') ?? ''
   if (!contentType.includes('multipart/form-data')) {
     return NextResponse.json({ error: 'Envie o áudio como multipart/form-data' }, { status: 400 })
@@ -119,25 +116,16 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // ── 1. Lê o áudio em memória ──────────────────────────────────────────────
     const buffer = Buffer.from(await audio.arrayBuffer())
 
-    // ── 1. Salva no Vercel Blob (temporário) ──────────────────────────────────
-    const blob = await put(`audio-temp/${Date.now()}-${audio.name}`, buffer, {
-      access: 'public', contentType: audio.type || 'audio/mpeg',
-    })
-    blobUrl = blob.url
-
-    // ── 2. Transcreve com Whisper ─────────────────────────────────────────────
+    // ── 2. Transcreve com Whisper (buffer em memória — sem storage externo) ───
     const openai      = getOpenAIClient()
     const transcricao = await openai.audio.transcriptions.create({
       model:    'whisper-1',
       file:     new File([buffer], audio.name, { type: audio.type || 'audio/mpeg' }),
       language: 'pt',
     })
-
-    // ── 3. Deleta do Blob ─────────────────────────────────────────────────────
-    await del(blobUrl).catch(() => {})
-    blobUrl = null
 
     if (!transcricao.text?.trim()) {
       return NextResponse.json(
@@ -146,7 +134,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // ── 4. Claude extrai RascunhoPRD com delimitadores ───────────────────────
+    // ── 3. Claude extrai RascunhoPRD com delimitadores ────────────────────────
     const anthropic = getAnthropicClient()
     const message   = await anthropic.messages.create({
       model:      'claude-sonnet-4-5',
@@ -163,7 +151,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(parseCamposRascunho(parseFields(rawText)))
 
   } catch (err: unknown) {
-    if (blobUrl) await del(blobUrl).catch(() => {})
     console.error('[transcrever-audio]', err)
     const msg = err instanceof Error ? err.message : 'Erro interno'
     return NextResponse.json({ error: msg }, { status: 500 })
