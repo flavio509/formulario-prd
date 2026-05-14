@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import type { FormularioState } from '@/types/prd'
 
 // ─── Helpers de UI ────────────────────────────────────────────────────────────
@@ -97,18 +98,17 @@ const INITIAL: FormularioState = {
   sistema_parecido: '', percepcao: '', contexto_adicional: '',
 }
 
-// ─── Metadados dos blocos ─────────────────────────────────────────────────────
+// ─── Metadados dos blocos — 8 etapas (Bloco 4 absorvido pelo Bloco 3) ─────────
 
 const BLOCOS = [
-  { num: 1, titulo: 'O negócio e o problema',        emoji: '🏢' },
-  { num: 2, titulo: 'O resultado ideal',              emoji: '🎯' },
-  { num: 3, titulo: 'Como vai funcionar',             emoji: '⚙️' },
-  { num: 4, titulo: 'O que o sistema vai fazer',      emoji: '🔧' },
-  { num: 5, titulo: 'Humano vs Sistema',              emoji: '👤' },
-  { num: 6, titulo: 'Limites e restrições',           emoji: '🚫' },
-  { num: 7, titulo: 'Usuários e personas',            emoji: '👥' },
-  { num: 8, titulo: 'Métricas e metas',               emoji: '📊' },
-  { num: 9, titulo: 'Referências e contexto',         emoji: '🔖' },
+  { num: 1, titulo: 'O negócio e o problema',   emoji: '🏢' },
+  { num: 2, titulo: 'O resultado ideal',          emoji: '🎯' },
+  { num: 3, titulo: 'Como vai funcionar',         emoji: '⚙️' },
+  { num: 4, titulo: 'Humano vs Sistema',          emoji: '👤' },
+  { num: 5, titulo: 'Limites e restrições',       emoji: '🚫' },
+  { num: 6, titulo: 'Usuários e personas',        emoji: '👥' },
+  { num: 7, titulo: 'Métricas e metas',           emoji: '📊' },
+  { num: 8, titulo: 'Referências e contexto',     emoji: '🔖' },
 ]
 const TOTAL = BLOCOS.length
 
@@ -120,9 +120,10 @@ interface Props {
 }
 
 export default function FormularioGuiado({ onSubmit, loading = false }: Props) {
-  const [bloco, setBloco]   = useState(1)
-  const [data, setData]     = useState<FormularioState>(INITIAL)
-  const [key, setKey]       = useState(0) // força re-mount para animação
+  const router            = useRouter()
+  const [bloco, setBloco] = useState(1)
+  const [data, setData]   = useState<FormularioState>(INITIAL)
+  const [key, setKey]     = useState(0)
 
   const set = useCallback(<K extends keyof FormularioState>(field: K, value: FormularioState[K]) => {
     setData((prev) => ({ ...prev, [field]: value }))
@@ -147,20 +148,22 @@ export default function FormularioGuiado({ onSubmit, loading = false }: Props) {
     }
   }
 
+  // Item 1: bloco 1 → homepage, outros → passo anterior (sem perder dados)
   function voltar() {
     if (bloco > 1) {
       setBloco((b) => b - 1)
       setKey((k) => k + 1)
+    } else {
+      router.push('/')
     }
   }
 
-  // Validação mínima por bloco
   function podeAvancar(): boolean {
     if (bloco === 1) return data.negocio.trim().length > 0
     return true
   }
 
-  const blocoInfo = BLOCOS[bloco - 1]
+  const blocoInfo  = BLOCOS[bloco - 1]
   const progressPct = ((bloco - 1) / TOTAL) * 100
 
   return (
@@ -202,16 +205,15 @@ export default function FormularioGuiado({ onSubmit, loading = false }: Props) {
         {bloco === 6 && <Bloco6 data={data} set={set} toggle={toggle} />}
         {bloco === 7 && <Bloco7 data={data} set={set} toggle={toggle} />}
         {bloco === 8 && <Bloco8 data={data} set={set} toggle={toggle} />}
-        {bloco === 9 && <Bloco9 data={data} set={set} toggle={toggle} />}
       </div>
 
       {/* Navegação */}
       <div className="flex items-center justify-between mt-8 pt-6 border-t border-zinc-800">
+        {/* Item 1: sempre clicável — bloco 1 vai para /, outros voltam um passo */}
         <button
           type="button"
           onClick={voltar}
-          disabled={bloco === 1}
-          className="px-5 py-2.5 rounded-xl text-sm font-medium text-zinc-400 hover:text-zinc-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          className="px-5 py-2.5 rounded-xl text-sm font-medium text-zinc-400 hover:text-zinc-200 transition-colors"
         >
           ← Voltar
         </button>
@@ -322,6 +324,7 @@ function Bloco1({ data, set, toggle }: BlocoProps) {
         </div>
       </div>
 
+      {/* Item 3: Problema — 3 dicas de reflexão abaixo do campo */}
       <div className="space-y-2">
         <Pergunta opcional>Descreva com suas palavras o que mais te incomoda</Pergunta>
         <Textarea
@@ -329,12 +332,19 @@ function Bloco1({ data, set, toggle }: BlocoProps) {
           onChange={(v) => set('dor_principal', v)}
           placeholder="Pode escrever à vontade, sem precisar ser técnico..."
         />
+        <div className="text-xs text-zinc-600 space-y-1 pt-1 leading-relaxed">
+          <p className="text-zinc-500 font-medium">💭 Dicas para reflexão:</p>
+          <p>• O que você faz manualmente hoje que mais toma seu tempo?</p>
+          <p>• Quem é afetado quando dá errado?</p>
+          <p>• Quanto custa (em tempo ou dinheiro) quando falha?</p>
+        </div>
       </div>
     </>
   )
 }
 
 // ─── Bloco 2 — O resultado ideal ─────────────────────────────────────────────
+// Item 2: `funcionamento_ideal` removido daqui (agora é Campo A do Bloco 3)
 
 function Bloco2({ data, set, toggle }: BlocoProps) {
   return (
@@ -393,26 +403,44 @@ function Bloco2({ data, set, toggle }: BlocoProps) {
           ))}
         </div>
       </div>
-
-      <div className="space-y-2">
-        <Pergunta opcional>Se funcionasse perfeitamente, o que ele faria?</Pergunta>
-        <Textarea
-          value={data.funcionamento_ideal}
-          onChange={(v) => set('funcionamento_ideal', v)}
-          placeholder="Descreva o sistema dos sonhos, sem se preocupar com viabilidade..."
-        />
-      </div>
     </>
   )
 }
 
 // ─── Bloco 3 — Como vai funcionar ────────────────────────────────────────────
+// Item 2: novo bloco consolidado (antigos Blocos 3 e 4)
+// — Campo A: "Em uma frase, o que o sistema faz?" (funcionamento_ideal)
+// — Campo B: "Liste as ações que o sistema executa sozinho" (funcionalidade_especifica)
+// — Perguntas operacionais do antigo Bloco 3 (modo, memória, horário, escala, tela)
+// — Ferramentas e redes sociais (do antigo Bloco 4)
 
 function Bloco3({ data, set, toggle }: BlocoProps) {
   const temRedeSocial = data.redes_sociais.some((r) => r !== 'Não')
 
   return (
     <>
+      {/* Campo A */}
+      <div className="space-y-2">
+        <Pergunta>Em uma frase, o que o sistema faz?</Pergunta>
+        <Textarea
+          value={data.funcionamento_ideal}
+          onChange={(v) => set('funcionamento_ideal', v)}
+          placeholder="Ex: Um agente que monitora meu calendário e envia lembretes automáticos"
+          rows={2}
+        />
+      </div>
+
+      {/* Campo B */}
+      <div className="space-y-2">
+        <Pergunta>Liste as ações que o sistema executa sozinho</Pergunta>
+        <Textarea
+          value={data.funcionalidade_especifica}
+          onChange={(v) => set('funcionalidade_especifica', v)}
+          placeholder="Ex: Monitora novos pedidos, envia confirmação por WhatsApp, atualiza planilha"
+          rows={3}
+        />
+      </div>
+
       <div className="space-y-2">
         <Pergunta>Você vai pedir para agir ou ele deve agir sozinho?</Pergunta>
         <div className="space-y-2">
@@ -488,6 +516,15 @@ function Bloco3({ data, set, toggle }: BlocoProps) {
       </div>
 
       <div className="space-y-2">
+        <Pergunta opcional>Tem ferramentas que o sistema PRECISA usar?</Pergunta>
+        <Textarea
+          value={data.ferramentas_necessarias}
+          onChange={(v) => set('ferramentas_necessarias', v)}
+          placeholder="Ex: Google Sheets, Notion, WhatsApp, Shopee, sistemas internos..."
+        />
+      </div>
+
+      <div className="space-y-2">
         <Pergunta>O sistema vai interagir com redes sociais?</Pergunta>
         <div className="space-y-2">
           {['Instagram', 'TikTok', 'YouTube', 'Outras plataformas', 'Não'].map((op) => (
@@ -504,72 +541,13 @@ function Bloco3({ data, set, toggle }: BlocoProps) {
           </div>
         )}
       </div>
-
-      <div className="space-y-2">
-        <Pergunta opcional>Algo mais sobre como imagina o sistema?</Pergunta>
-        <Textarea
-          value={data.obs_funcionamento}
-          onChange={(v) => set('obs_funcionamento', v)}
-          placeholder="Qualquer detalhe que considere importante..."
-        />
-      </div>
     </>
   )
 }
 
-// ─── Bloco 4 — O que o sistema vai fazer ─────────────────────────────────────
+// ─── Bloco 4 — Humano vs Sistema (era Bloco 5) ───────────────────────────────
 
 function Bloco4({ data, set, toggle }: BlocoProps) {
-  return (
-    <>
-      <div className="space-y-2">
-        <Pergunta>O que o sistema vai precisar fazer? (marque tudo que se aplica)</Pergunta>
-        <div className="space-y-2">
-          {[
-            'Buscar informações atualizadas na internet',
-            'Se conectar com ferramentas que já uso',
-            'Ler e processar arquivos (PDFs, planilhas, documentos)',
-            'Gerar relatórios e resumos automaticamente',
-            'Guardar e organizar informações ao longo do tempo',
-            'Me alertar quando algo importante acontecer',
-            'Preparar conteúdo para eu publicar nas redes sociais',
-            'Monitorar o que acontece no mercado ou com concorrentes',
-            'Processar pedidos ou transações',
-            'Analisar dados e gerar insights',
-            'Criar ou atualizar documentos automaticamente',
-            'Se integrar com sistemas que já uso (CRM, planilhas, email)',
-          ].map((op) => (
-            <OpcaoMultipla key={op} value={op} selected={data.capacidades.includes(op)} onToggle={(v) => toggle('capacidades', v)}>
-              {op}
-            </OpcaoMultipla>
-          ))}
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <Pergunta opcional>Tem ferramentas que o sistema PRECISA usar?</Pergunta>
-        <Textarea
-          value={data.ferramentas_necessarias}
-          onChange={(v) => set('ferramentas_necessarias', v)}
-          placeholder="Ex: Google Sheets, Notion, WhatsApp, Shopee, sistemas internos..."
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Pergunta opcional>Alguma funcionalidade específica que imagina?</Pergunta>
-        <Textarea
-          value={data.funcionalidade_especifica}
-          onChange={(v) => set('funcionalidade_especifica', v)}
-          placeholder="Descreva livremente..."
-        />
-      </div>
-    </>
-  )
-}
-
-// ─── Bloco 5 — Humano vs Sistema ─────────────────────────────────────────────
-
-function Bloco5({ data, set, toggle }: BlocoProps) {
   return (
     <>
       <div className="space-y-2">
@@ -627,13 +605,14 @@ function Bloco5({ data, set, toggle }: BlocoProps) {
   )
 }
 
-// ─── Bloco 6 — Limites e restrições ──────────────────────────────────────────
+// ─── Bloco 5 — Limites e restrições (era Bloco 6) ────────────────────────────
+// Item 3: label "Restrições" → "O que o sistema NUNCA deve fazer sozinho?"
 
-function Bloco6({ data, set, toggle }: BlocoProps) {
+function Bloco5({ data, set, toggle }: BlocoProps) {
   return (
     <>
       <div className="space-y-2">
-        <Pergunta>O que o sistema NÃO deve fazer sem sua aprovação?</Pergunta>
+        <Pergunta>O que o sistema NUNCA deve fazer sozinho?</Pergunta>
         <div className="space-y-2">
           {[
             'Publicar ou postar em redes sociais',
@@ -648,6 +627,9 @@ function Bloco6({ data, set, toggle }: BlocoProps) {
             </OpcaoMultipla>
           ))}
         </div>
+        <p className="text-xs text-zinc-600 pt-1">
+          Ex: nunca enviar pagamento sem minha aprovação / nunca deletar dados / orçamento máximo R$X/mês
+        </p>
       </div>
 
       <div className="space-y-2">
@@ -685,13 +667,15 @@ function Bloco6({ data, set, toggle }: BlocoProps) {
   )
 }
 
-// ─── Bloco 7 — Usuários e personas ───────────────────────────────────────────
+// ─── Bloco 6 — Usuários e personas (era Bloco 7) ─────────────────────────────
+// Item 3: "Personas" → dividido em (A) quem usa e (B) quem recebe resultados
 
-function Bloco7({ data, set, toggle }: BlocoProps) {
+function Bloco6({ data, set, toggle }: BlocoProps) {
   return (
     <>
+      {/* Item 3: (A) Quem vai usar o sistema diretamente? */}
       <div className="space-y-2">
-        <Pergunta>Para quem é esse sistema?</Pergunta>
+        <Pergunta>Quem vai usar o sistema diretamente?</Pergunta>
         <div className="space-y-2">
           {[
             'Para mim mesmo — resolve meu próprio problema',
@@ -756,25 +740,27 @@ function Bloco7({ data, set, toggle }: BlocoProps) {
         </div>
       </div>
 
+      {/* Item 3: (B) Quem vai receber os resultados */}
       <div className="space-y-2">
-        <Pergunta opcional>Quer descrever melhor quem vai usar?</Pergunta>
+        <Pergunta opcional>Quem vai receber os resultados ou comunicações do sistema?</Pergunta>
         <Textarea
           value={data.descricao_usuario}
           onChange={(v) => set('descricao_usuario', v)}
-          placeholder="Detalhe o perfil de quem vai usar o sistema..."
+          placeholder="Ex: Meus clientes recebem confirmações por WhatsApp, minha equipe recebe relatórios por email..."
         />
       </div>
     </>
   )
 }
 
-// ─── Bloco 8 — Métricas e metas ───────────────────────────────────────────────
+// ─── Bloco 7 — Métricas e metas (era Bloco 8) ────────────────────────────────
+// Item 3: "Métricas" → "Como você vai saber que deu certo?" + dica
 
-function Bloco8({ data, set, toggle }: BlocoProps) {
+function Bloco7({ data, set, toggle }: BlocoProps) {
   return (
     <>
       <div className="space-y-2">
-        <Pergunta>Como quer medir se está funcionando?</Pergunta>
+        <Pergunta>Como você vai saber que deu certo?</Pergunta>
         <div className="space-y-2">
           {[
             'Tempo economizado por semana',
@@ -790,6 +776,9 @@ function Bloco8({ data, set, toggle }: BlocoProps) {
             </OpcaoMultipla>
           ))}
         </div>
+        <p className="text-xs text-zinc-600 pt-1">
+          Ex: Em 3 meses quero gastar 80% menos tempo com tarefas manuais. Zero esquecimentos por mês.
+        </p>
       </div>
 
       <div className="space-y-2">
@@ -811,9 +800,9 @@ function Bloco8({ data, set, toggle }: BlocoProps) {
   )
 }
 
-// ─── Bloco 9 — Referências e contexto ────────────────────────────────────────
+// ─── Bloco 8 — Referências e contexto (era Bloco 9) ──────────────────────────
 
-function Bloco9({ data, set }: BlocoProps) {
+function Bloco8({ data, set }: BlocoProps) {
   return (
     <>
       <div className="space-y-2">

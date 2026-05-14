@@ -27,6 +27,15 @@ function iconeArquivo(nome: string): string {
   return '📝'
 }
 
+// Item 5: detecta se o projeto usa OpenClaw (Tipo 4, 5 ou 6)
+function detectarTipoUso(arquivos: Record<string, string>): 'openclaw' | 'claude-code' {
+  const conteudo = Object.values(arquivos).join('\n')
+  if (/openclaw/i.test(conteudo) || /Tipo\s*[456]/i.test(conteudo)) {
+    return 'openclaw'
+  }
+  return 'claude-code'
+}
+
 // Agrupa arquivos por categoria para exibição
 function agruparArquivos(arquivos: Record<string, string>) {
   const principais: [string, string][] = []
@@ -97,6 +106,7 @@ export default function ResultadoPage() {
 
   const { arquivos, titulo, parcial, aviso } = resultado
   const { principais, openclaw, config } = agruparArquivos(arquivos)
+  const tipoUso = detectarTipoUso(arquivos)
   const totalArquivos = Object.keys(arquivos).length
   const conteudoAtivo = arquivos[arquivoAtivo] ?? ''
 
@@ -265,13 +275,41 @@ export default function ResultadoPage() {
           </div>
         </div>
 
-        {/* Próximos passos */}
-        <div className="p-4 rounded-xl border border-zinc-700/50 bg-zinc-900/30 text-sm text-zinc-400 leading-relaxed">
-          💡 <strong className="text-zinc-300">Como usar:</strong> Extraia o ZIP, abra o terminal na pasta e
-          rode <code className="text-blue-400 text-xs bg-zinc-800 px-1.5 py-0.5 rounded">claude</code>.
-          Cole o conteúdo do <strong className="text-zinc-300">CLAUDE.md</strong> na primeira mensagem
-          e depois execute o <strong className="text-zinc-300">PLAN.md</strong> milestone por milestone.
-        </div>
+        {/* Item 5: instrução de uso — detecta Claude Code vs OpenClaw */}
+        {tipoUso === 'claude-code' ? (
+          <div className="p-4 rounded-xl border border-zinc-700/50 bg-zinc-900/30 text-sm text-zinc-400 leading-relaxed">
+            💡 <strong className="text-zinc-300">Como usar:</strong> Extraia o ZIP, abra o terminal na pasta e
+            rode <code className="text-blue-400 text-xs bg-zinc-800 px-1.5 py-0.5 rounded">claude</code>.
+            Cole o conteúdo do <strong className="text-zinc-300">CLAUDE.md</strong> na primeira mensagem
+            e depois execute o <strong className="text-zinc-300">PLAN.md</strong> milestone por milestone.
+          </div>
+        ) : (
+          <div className="p-4 rounded-xl border border-purple-500/20 bg-purple-500/5 text-sm text-zinc-400 leading-relaxed space-y-2">
+            <p>🤖 <strong className="text-zinc-300">Este projeto requer OpenClaw.</strong></p>
+            <p>
+              Instale primeiro:{' '}
+              <code className="text-purple-400 text-xs bg-zinc-800 px-1.5 py-0.5 rounded">npm install -g openclaw</code>
+            </p>
+            <p>
+              Depois:{' '}
+              <code className="text-purple-400 text-xs bg-zinc-800 px-1.5 py-0.5 rounded">openclaw init</code>
+              {' '}→ cole o conteúdo do{' '}
+              <strong className="text-zinc-300">SOUL.md</strong> e{' '}
+              <strong className="text-zinc-300">AGENTS.md</strong>
+            </p>
+            <p>
+              Documentação:{' '}
+              <a
+                href="https://docs.openclaw.dev"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-purple-400 hover:underline"
+              >
+                docs.openclaw.dev
+              </a>
+            </p>
+          </div>
+        )}
 
         {/* Ações finais */}
         <div className="flex flex-col sm:flex-row gap-3 justify-between items-center pb-10">

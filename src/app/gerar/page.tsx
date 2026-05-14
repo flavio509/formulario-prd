@@ -15,12 +15,21 @@ type SSEData =
 export default function GerarPage() {
   const router = useRouter()
 
-  const [estado,      setEstado]      = useState<Estado>('gerando')
-  const [erro,        setErro]        = useState('')
-  const [progresso,   setProgresso]   = useState(0)
-  const [statusTexto, setStatusTexto] = useState('Iniciando geração...')
+  const [estado,        setEstado]        = useState<Estado>('gerando')
+  const [erro,          setErro]          = useState('')
+  const [progresso,     setProgresso]     = useState(0)
+  const [statusTexto,   setStatusTexto]   = useState('Iniciando geração...')
+  const [tempoSegundos, setTempoSegundos] = useState(0)
 
   const chamouRef = useRef(false)
+
+  // Item 4: contador crescente em tempo real — só roda enquanto está gerando
+  useEffect(() => {
+    if (estado !== 'gerando') return
+    setTempoSegundos(0)
+    const id = setInterval(() => setTempoSegundos((s) => s + 1), 1000)
+    return () => clearInterval(id)
+  }, [estado])
 
   useEffect(() => {
     if (chamouRef.current) return
@@ -157,7 +166,14 @@ export default function GerarPage() {
             </div>
           </div>
 
-          <p className="text-xs text-zinc-700">Pode levar até 60 segundos...</p>
+          <p className="text-xs text-zinc-700">
+            {tempoSegundos < 5
+              ? 'Iniciando...'
+              : tempoSegundos < 60
+              ? `Gerando há ${tempoSegundos} seg...`
+              : `Gerando há ${Math.floor(tempoSegundos / 60)} min ${String(tempoSegundos % 60).padStart(2, '0')} seg...`
+            }
+          </p>
         </div>
       )}
 
@@ -182,6 +198,7 @@ export default function GerarPage() {
                 setErro('')
                 setProgresso(0)
                 setStatusTexto('Iniciando geração...')
+                setTempoSegundos(0)
               }}
               className="inline-block px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-500 transition-colors"
             >
