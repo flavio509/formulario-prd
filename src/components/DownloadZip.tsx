@@ -33,6 +33,7 @@ export default function DownloadZip({
     const JSZip = (await import('jszip')).default
     const zip   = new JSZip()
 
+    console.log('[DownloadZip] arquivos recebidos como prop:', Object.keys(arquivos))
     for (const [caminho, conteudo] of Object.entries(arquivos)) {
       zip.file(caminho, conteudo)
     }
