@@ -514,7 +514,11 @@ export async function POST(req: NextRequest) {
               tokens++
               if (tokens % 40 === 0) {
                 const pct = Math.min(pctEnd, pctStart + Math.floor((tokens / (maxTokens * 0.6)) * range))
-                send({ type: 'progress', percent: pct, status: label })
+                try {
+                  send({ type: 'progress', percent: pct, status: label })
+                } catch {
+                  // stream pode estar fechado — ignora e continua gerando
+                }
               }
             }
           }
