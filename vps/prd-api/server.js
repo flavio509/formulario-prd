@@ -587,6 +587,7 @@ app.post('/gerar-prd', autenticar, async (req, res) => {
 
     const arquivos = { ...c1, ...c2, ...c3, ...c4, ...c5, ...c6, ...c7 }
     const total    = Object.keys(arquivos).length
+    console.log('[prd-api] arquivos finais:', Object.keys(arquivos))
     const parcial  = total < 7
 
     send({
