@@ -66,7 +66,11 @@ REGRAS ABSOLUTAS:
 3. Cada arquivo deve ser 100% específico ao negócio descrito — NUNCA use conteúdo genérico de template.
    O usuário deve reconhecer o próprio negócio em cada parágrafo.
 4. Use markdown limpo e bem formatado.
-5. Baseie-se EXCLUSIVAMENTE nas informações fornecidas.`
+5. Baseie-se EXCLUSIVAMENTE nas informações fornecidas.
+
+CRÍTICO: Cada arquivo DEVE terminar com ===END=== na própria linha.
+NUNCA omita o ===END===. Se estiver próximo do limite de tokens,
+encurte o conteúdo mas SEMPRE inclua o ===END=== de cada arquivo.`
 
 // ─── Prompt Call 1 — PRD.md + CLAUDE.md + PLAN.md ────────────────────────────
 
@@ -497,7 +501,7 @@ app.post('/gerar-prd', autenticar, async (req, res) => {
 
     const stream1 = client.messages.stream({
       model:      'claude-sonnet-4-5',
-      max_tokens: 3000,
+      max_tokens: 8192,
       system:     SISTEMA,
       messages:   [{ role: 'user', content: buildPromptNucleo(rascunho, arquitetura) }],
     })
@@ -515,6 +519,12 @@ app.post('/gerar-prd', autenticar, async (req, res) => {
 
     console.log(`[prd-api] call 1 ok (${Date.now() - t1}ms)`)
     send({ type: 'progress', percent: 50, status: 'Processando documentos gerados...' })
+
+    // Fallback: se o último arquivo foi cortado sem ===END===, fecha automaticamente
+    if (rawText1.includes('===FILE:') && !rawText1.trimEnd().endsWith('===END===')) {
+      console.warn('[prd-api] rawText1 cortado — adicionando ===END=== de fallback')
+      rawText1 += '\n===END==='
+    }
 
     const arquivosCore = parseArquivos(rawText1)
     console.log('[prd-api] call 1 arquivos:', Object.keys(arquivosCore))
