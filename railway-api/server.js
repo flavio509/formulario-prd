@@ -72,14 +72,10 @@ CRÍTICO: Cada arquivo DEVE terminar com ===END=== na própria linha.
 NUNCA omita o ===END===. Se estiver próximo do limite de tokens,
 encurte o conteúdo mas SEMPRE inclua o ===END=== de cada arquivo.`
 
-// ─── Prompt Call 1 — PRD.md + CLAUDE.md + PLAN.md ────────────────────────────
+// ─── Prompt Call 1 — PRD.md + CLAUDE.md ──────────────────────────────────────
 
 function buildPromptNucleo(rascunho, arquitetura) {
   const hoje = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
-
-  const numMilestones = (
-    { 'Simples': 2, 'Média': 3, 'Alta': 4, 'Muito Alta': 5 }
-  )[arquitetura.complexidade] ?? 3
 
   return `RASCUNHO DO PROJETO:
 ${JSON.stringify(rascunho, null, 2)}
@@ -89,7 +85,7 @@ ${JSON.stringify(arquitetura, null, 2)}
 
 DATA ATUAL: ${hoje}
 
-Gere os 3 arquivos abaixo. Cada um deve ser completo, específico ao negócio e pronto para uso.
+Gere os 2 arquivos abaixo. Cada um deve ser completo, específico ao negócio e pronto para uso.
 
 ──────────────────────────────────────────────────────────────────
 ARQUIVO 1: PRD.md
@@ -231,11 +227,39 @@ Briefing permanente para o Claude Code. Conciso e direto.
 ## Comandos Úteis
 [lista de comandos do dia a dia específicos para a stack]
 
-──────────────────────────────────────────────────────────────────
-ARQUIVO 3: PLAN.md
-Plano de execução em milestones. Complexidade: ${arquitetura.complexidade} → gere exatamente ${numMilestones} milestones no MVP.
+Gere os 2 arquivos acima agora, usando os delimitadores ===FILE: === / ===END=== exatamente.`
+}
 
-# PLAN — [titulo]
+// ─── Prompt Call 2c — PLAN.md ────────────────────────────────────────────────
+
+function buildPromptPlan(rascunho, arquitetura) {
+  const hoje = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+
+  const numMilestones = (
+    { 'Simples': 2, 'Média': 3, 'Alta': 4, 'Muito Alta': 5 }
+  )[arquitetura.complexidade] ?? 3
+
+  const ctx = {
+    titulo:              rascunho.titulo,
+    complexidade:        arquitetura.complexidade,
+    tipo_numero:         arquitetura.tipo_numero,
+    tipo_projeto:        arquitetura.tipo_projeto,
+    mvp_funcionalidades: arquitetura.mvp_funcionalidades,
+    v2_funcionalidades:  arquitetura.v2_funcionalidades,
+  }
+
+  return `CONTEXTO DO PROJETO:
+${JSON.stringify(ctx, null, 2)}
+
+DATA ATUAL: ${hoje}
+
+Gere APENAS o arquivo abaixo. Deve ser completo, específico ao negócio e pronto para uso.
+
+──────────────────────────────────────────────────────────────────
+ARQUIVO 1: PLAN.md
+Plano de execução em milestones. Complexidade: ${ctx.complexidade} → gere exatamente ${numMilestones} milestones no MVP.
+
+# PLAN — ${ctx.titulo}
 
 > **Iniciado em:** ${hoje} · **Status:** 🔴 Não iniciado
 
@@ -265,7 +289,11 @@ Plano de execução em milestones. Complexidade: ${arquitetura.complexidade} →
 ## Definição de Pronto (DoD)
 [5 critérios específicos do projeto: testes, deploy, documentação, etc.]
 
-Gere os 3 arquivos acima agora, usando os delimitadores ===FILE: === / ===END=== exatamente.`
+Gere o arquivo acima agora, usando os delimitadores ===FILE: === / ===END=== exatamente.
+
+CRÍTICO: O arquivo DEVE terminar com ===END=== na própria linha.
+NUNCA omita o ===END===. Se estiver próximo do limite de tokens,
+encurte o conteúdo mas SEMPRE inclua o ===END=== no final.`
 }
 
 // ─── Prompt Call 2a — .env.example + .gitignore ──────────────────────────────
@@ -563,8 +591,52 @@ app.post('/gerar-prd', autenticar, async (req, res) => {
       return
     }
 
+    // ── Call 2c — PLAN.md ────────────────────────────────────────────────────
+    send({ type: 'progress', percent: 52, status: 'Redigindo PLAN.md...' })
+    console.log('[prd-api] call 2c start')
+    const t2c = Date.now()
+
+    let arquivosPlan = {}
+    try {
+      let rawTextPlan = '', tokensPlan = 0
+
+      const streamPlan = client.messages.stream({
+        model:      'claude-sonnet-4-5',
+        max_tokens: 2048,
+        system:     SISTEMA,
+        messages:   [{ role: 'user', content: buildPromptPlan(rascunho, arquitetura) }],
+      })
+
+      for await (const event of streamPlan) {
+        if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+          rawTextPlan += event.delta.text
+          tokensPlan++
+          if (tokensPlan % 40 === 0) {
+            const pct = Math.min(60, 52 + Math.floor((tokensPlan / 600) * 8))
+            send({ type: 'progress', percent: pct, status: 'Redigindo PLAN.md...' })
+          }
+        }
+      }
+
+      console.log(`[prd-api] call 2c ok (${Date.now() - t2c}ms)`)
+      console.log('[prd-api] call 2c rawTextPlan length:', rawTextPlan.length)
+      console.log('[prd-api] call 2c matches ===END===:', rawTextPlan.match(/===END===/g)?.length)
+
+      if (rawTextPlan.includes('===FILE:') && !rawTextPlan.trimEnd().endsWith('===END===')) {
+        console.warn('[prd-api] rawTextPlan cortado — adicionando ===END=== de fallback')
+        rawTextPlan += '\n===END==='
+      }
+
+      arquivosPlan = parseArquivos(rawTextPlan)
+      console.log('[prd-api] call 2c arquivos:', Object.keys(arquivosPlan))
+
+    } catch (errPlan) {
+      console.warn('[prd-api] call 2c (PLAN.md) falhou:', errPlan.message)
+      // Continua sem PLAN.md — os demais arquivos serão gerados normalmente
+    }
+
     // ── Call 2a — .env.example + .gitignore ────────────────────────────────
-    send({ type: 'progress', percent: 55, status: 'Gerando .env e .gitignore...' })
+    send({ type: 'progress', percent: 62, status: 'Gerando .env e .gitignore...' })
     console.log('[prd-api] call 2a start')
     const t2a = Date.now()
 
@@ -583,7 +655,7 @@ app.post('/gerar-prd', autenticar, async (req, res) => {
           rawText2a += event.delta.text
           tokens2a++
           if (tokens2a % 40 === 0) {
-            const pct = Math.min(70, 55 + Math.floor((tokens2a / 800) * 15))
+            const pct = Math.min(74, 62 + Math.floor((tokens2a / 800) * 12))
             send({ type: 'progress', percent: pct, status: 'Gerando .env e .gitignore...' })
           }
         }
@@ -602,7 +674,7 @@ app.post('/gerar-prd', autenticar, async (req, res) => {
       console.log('[prd-api] call 2a arquivos:', Object.keys(arquivos2a))
 
       // ── Call 2b — README.md + COMO_USAR.md + openclaw/ ──────────────────
-      send({ type: 'progress', percent: 70, status: 'Gerando README e guia de uso...' })
+      send({ type: 'progress', percent: 74, status: 'Gerando README e guia de uso...' })
       console.log('[prd-api] call 2b start')
       const t2b = Date.now()
 
@@ -620,7 +692,7 @@ app.post('/gerar-prd', autenticar, async (req, res) => {
           rawText2b += event.delta.text
           tokens2b++
           if (tokens2b % 40 === 0) {
-            const pct = Math.min(95, 70 + Math.floor((tokens2b / 800) * 25))
+            const pct = Math.min(95, 74 + Math.floor((tokens2b / 800) * 21))
             send({ type: 'progress', percent: pct, status: 'Gerando README e guia de uso...' })
           }
         }
@@ -638,14 +710,14 @@ app.post('/gerar-prd', autenticar, async (req, res) => {
       const arquivos2b = parseArquivos(rawText2b)
       console.log('[prd-api] call 2b arquivos:', Object.keys(arquivos2b))
 
-      const arquivos = { ...arquivosCore, ...arquivos2a, ...arquivos2b }
+      const arquivos = { ...arquivosCore, ...arquivosPlan, ...arquivos2a, ...arquivos2b }
       send({ type: 'done', arquivos, titulo: rascunho.titulo, parcial: false })
 
     } catch (err2) {
       console.warn('[prd-api] call 2 falhou:', err2.message)
       send({
         type:    'done',
-        arquivos: arquivosCore,
+        arquivos: { ...arquivosCore, ...arquivosPlan },
         titulo:  rascunho.titulo,
         parcial: true,
         aviso:   'PRD.md, CLAUDE.md e PLAN.md foram gerados. Os arquivos de configuração (.env.example, .gitignore, etc.) não foram incluídos — regenere ou crie manualmente.',

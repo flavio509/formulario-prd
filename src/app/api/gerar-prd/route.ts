@@ -54,14 +54,10 @@ CRÍTICO: Cada arquivo DEVE terminar com ===END=== na própria linha.
 NUNCA omita o ===END===. Se estiver próximo do limite de tokens,
 encurte o conteúdo mas SEMPRE inclua o ===END=== de cada arquivo.`
 
-// ─── Call 1 — Núcleo: PRD.md + CLAUDE.md + PLAN.md ───────────────────────────
+// ─── Call 1 — Núcleo: PRD.md + CLAUDE.md ─────────────────────────────────────
 
 function buildPromptNucleo(rascunho: RascunhoPRD, arquitetura: ArquiteturaPRD): string {
   const hoje = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
-
-  const numMilestones = (
-    { 'Simples': 2, 'Média': 3, 'Alta': 4, 'Muito Alta': 5 } as Record<string, number>
-  )[arquitetura.complexidade] ?? 3
 
   return `RASCUNHO DO PROJETO:
 ${JSON.stringify(rascunho, null, 2)}
@@ -71,7 +67,7 @@ ${JSON.stringify(arquitetura, null, 2)}
 
 DATA ATUAL: ${hoje}
 
-Gere os 3 arquivos abaixo. Cada um deve ser completo, específico ao negócio e pronto para uso.
+Gere os 2 arquivos abaixo. Cada um deve ser completo, específico ao negócio e pronto para uso.
 
 ──────────────────────────────────────────────────────────────────
 ARQUIVO 1: PRD.md
@@ -213,11 +209,39 @@ Briefing permanente para o Claude Code. Conciso e direto.
 ## Comandos Úteis
 [lista de comandos do dia a dia específicos para a stack]
 
-──────────────────────────────────────────────────────────────────
-ARQUIVO 3: PLAN.md
-Plano de execução em milestones. Complexidade: ${arquitetura.complexidade} → gere exatamente ${numMilestones} milestones no MVP.
+Gere os 2 arquivos acima agora, usando os delimitadores ===FILE: === / ===END=== exatamente.`
+}
 
-# PLAN — [titulo]
+// ─── Call 2c — PLAN.md ───────────────────────────────────────────────────────
+
+function buildPromptPlan(rascunho: RascunhoPRD, arquitetura: ArquiteturaPRD): string {
+  const hoje = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+
+  const numMilestones = (
+    { 'Simples': 2, 'Média': 3, 'Alta': 4, 'Muito Alta': 5 } as Record<string, number>
+  )[arquitetura.complexidade] ?? 3
+
+  const ctx = {
+    titulo:              rascunho.titulo,
+    complexidade:        arquitetura.complexidade,
+    tipo_numero:         arquitetura.tipo_numero,
+    tipo_projeto:        arquitetura.tipo_projeto,
+    mvp_funcionalidades: arquitetura.mvp_funcionalidades,
+    v2_funcionalidades:  arquitetura.v2_funcionalidades,
+  }
+
+  return `CONTEXTO DO PROJETO:
+${JSON.stringify(ctx, null, 2)}
+
+DATA ATUAL: ${hoje}
+
+Gere APENAS o arquivo abaixo. Deve ser completo, específico ao negócio e pronto para uso.
+
+──────────────────────────────────────────────────────────────────
+ARQUIVO 1: PLAN.md
+Plano de execução em milestones. Complexidade: ${ctx.complexidade} → gere exatamente ${numMilestones} milestones no MVP.
+
+# PLAN — ${ctx.titulo}
 
 > **Iniciado em:** ${hoje} · **Status:** 🔴 Não iniciado
 
@@ -247,7 +271,11 @@ Plano de execução em milestones. Complexidade: ${arquitetura.complexidade} →
 ## Definição de Pronto (DoD)
 [5 critérios específicos do projeto: testes, deploy, documentação, etc.]
 
-Gere os 3 arquivos acima agora, usando os delimitadores ===FILE: === / ===END=== exatamente.`
+Gere o arquivo acima agora, usando os delimitadores ===FILE: === / ===END=== exatamente.
+
+CRÍTICO: O arquivo DEVE terminar com ===END=== na própria linha.
+NUNCA omita o ===END===. Se estiver próximo do limite de tokens,
+encurte o conteúdo mas SEMPRE inclua o ===END=== no final.`
 }
 
 // ─── Call 2a — Config curto: .env.example + .gitignore ───────────────────────
@@ -507,7 +535,7 @@ export async function POST(req: NextRequest) {
       try {
         const client = getAnthropicClient()
 
-        // ── Call 1 — PRD.md + CLAUDE.md + PLAN.md ──────────────────────────
+        // ── Call 1 — PRD.md + CLAUDE.md ────────────────────────────────────
         send({ type: 'progress', percent: 5, status: 'Analisando o projeto...' })
 
         let rawText1 = ''
@@ -556,8 +584,50 @@ export async function POST(req: NextRequest) {
           return
         }
 
+        // ── Call 2c — PLAN.md ────────────────────────────────────────────────
+        send({ type: 'progress', percent: 52, status: 'Redigindo PLAN.md...' })
+
+        let arquivosPlan: Record<string, string> = {}
+        try {
+          let rawTextPlan = ''
+          let tokensPlan  = 0
+
+          const apiStreamPlan = client.messages.stream({
+            model:      'claude-sonnet-4-5',
+            max_tokens: 2048,
+            system:     SISTEMA,
+            messages:   [{ role: 'user', content: buildPromptPlan(rascunho, arquitetura) }],
+          })
+
+          for await (const event of apiStreamPlan) {
+            if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+              rawTextPlan += event.delta.text
+              tokensPlan++
+              if (tokensPlan % 40 === 0) {
+                const pct = Math.min(60, 52 + Math.floor((tokensPlan / 600) * 8))
+                send({ type: 'progress', percent: pct, status: 'Redigindo PLAN.md...' })
+              }
+            }
+          }
+
+          console.log('[gerar-prd] call 2c rawTextPlan length:', rawTextPlan.length)
+          console.log('[gerar-prd] call 2c matches ===END===:', rawTextPlan.match(/===END===/g)?.length)
+
+          if (rawTextPlan.includes('===FILE:') && !rawTextPlan.trimEnd().endsWith('===END===')) {
+            console.warn('[gerar-prd] rawTextPlan cortado — adicionando ===END=== de fallback')
+            rawTextPlan += '\n===END==='
+          }
+
+          arquivosPlan = parseArquivos(rawTextPlan)
+          console.log('[gerar-prd] call 2c arquivos:', Object.keys(arquivosPlan))
+
+        } catch (errPlan) {
+          console.warn('[gerar-prd] call 2c (PLAN.md) falhou:', errPlan instanceof Error ? errPlan.message : errPlan)
+          // Continua sem PLAN.md — os demais arquivos serão gerados normalmente
+        }
+
         // ── Call 2a — .env.example + .gitignore ────────────────────────────
-        send({ type: 'progress', percent: 55, status: 'Gerando .env e .gitignore...' })
+        send({ type: 'progress', percent: 62, status: 'Gerando .env e .gitignore...' })
 
         try {
           let rawText2a = ''
@@ -575,7 +645,7 @@ export async function POST(req: NextRequest) {
               rawText2a += event.delta.text
               tokens2a++
               if (tokens2a % 40 === 0) {
-                const pct = Math.min(70, 55 + Math.floor((tokens2a / 800) * 15))
+                const pct = Math.min(74, 62 + Math.floor((tokens2a / 800) * 12))
                 send({ type: 'progress', percent: pct, status: 'Gerando .env e .gitignore...' })
               }
             }
@@ -593,7 +663,7 @@ export async function POST(req: NextRequest) {
           console.log('[gerar-prd] call 2a arquivos:', Object.keys(arquivos2a))
 
           // ── Call 2b — README.md + COMO_USAR.md + openclaw/ ──────────────
-          send({ type: 'progress', percent: 70, status: 'Gerando README e guia de uso...' })
+          send({ type: 'progress', percent: 74, status: 'Gerando README e guia de uso...' })
 
           let rawText2b = ''
           let tokens2b  = 0
@@ -610,7 +680,7 @@ export async function POST(req: NextRequest) {
               rawText2b += event.delta.text
               tokens2b++
               if (tokens2b % 40 === 0) {
-                const pct = Math.min(95, 70 + Math.floor((tokens2b / 800) * 25))
+                const pct = Math.min(95, 74 + Math.floor((tokens2b / 800) * 21))
                 send({ type: 'progress', percent: pct, status: 'Gerando README e guia de uso...' })
               }
             }
@@ -627,15 +697,15 @@ export async function POST(req: NextRequest) {
           const arquivos2b = parseArquivos(rawText2b)
           console.log('[gerar-prd] call 2b arquivos:', Object.keys(arquivos2b))
 
-          const arquivos = { ...arquivosCore, ...arquivos2a, ...arquivos2b }
+          const arquivos = { ...arquivosCore, ...arquivosPlan, ...arquivos2a, ...arquivos2b }
           send({ type: 'done', arquivos, titulo: rascunho.titulo, parcial: false })
 
         } catch (err2) {
-          // Call 2 falhou (timeout ou erro) — retorna call 1 com flag parcial
+          // Call 2 falhou (timeout ou erro) — retorna call 1 + PLAN.md com flag parcial
           console.warn('[gerar-prd] call 2 falhou:', err2 instanceof Error ? err2.message : err2)
           send({
             type:     'done',
-            arquivos: arquivosCore,
+            arquivos: { ...arquivosCore, ...arquivosPlan },
             titulo:   rascunho.titulo,
             parcial:  true,
             aviso:    'PRD.md, CLAUDE.md e PLAN.md foram gerados. Os arquivos de configuração (.env.example, .gitignore, etc.) não foram incluídos por timeout — regenere ou crie manualmente.',
